@@ -136,6 +136,10 @@ O workflow em `.github/workflows/ci.yml` executa automaticamente os passos de in
      ```
 3. Provisionamento da infraestrutura:
    - Configure suas credenciais AWS
+    ```
+     chmod +x aws-config.sh
+     ./aws-config.sh
+     ```
    - Execute:
      ```
      cd infra
