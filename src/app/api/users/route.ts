@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-// Instantiate Prisma client once per Lambda to avoid exhausting database connections.
-const prisma = new PrismaClient();
+import { dynamoDBService } from '@/lib/dynamodb';
 
 /**
  * Handle GET requests to fetch all users.
@@ -10,8 +7,20 @@ const prisma = new PrismaClient();
  * Returns a JSON array of users ordered by creation date descending.
  */
 export async function GET() {
-  const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
-  return NextResponse.json(users);
+  try {
+    const users = await dynamoDBService.getAllClients();
+    // Sort by createdAt descending
+    const sortedUsers = users.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return NextResponse.json(sortedUsers);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
+  }
 }
 
 /**
@@ -28,16 +37,21 @@ export async function POST(req: NextRequest) {
     );
   }
   try {
-    const user = await prisma.user.create({ data: { name, email } });
-    return NextResponse.json(user, { status: 201 });
-  } catch (e: any) {
-    // P2002 is the Prisma error code for unique constraint violation
-    if (e.code === 'P2002') {
+    // Check if email already exists
+    const existingUsers = await dynamoDBService.getAllClients();
+    const emailExists = existingUsers.some(user => user.email === email);
+    
+    if (emailExists) {
       return NextResponse.json(
         { error: 'email must be unique' },
         { status: 409 },
       );
     }
+
+    const user = await dynamoDBService.createClient({ name, email });
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    console.error('Error creating user:', error);
     return NextResponse.json(
       { error: 'internal' },
       { status: 500 },

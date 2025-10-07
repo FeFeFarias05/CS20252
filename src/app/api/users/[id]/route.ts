@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { dynamoDBService } from '@/lib/dynamodb';
 
 /**
  * GET `/api/users/[id]` – fetch a single user by id.
  */
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const user = await prisma.user.findUnique({ where: { id: params.id } });
-  return user
-    ? NextResponse.json(user)
-    : NextResponse.json({ error: 'not found' }, { status: 404 });
+  try {
+    const user = await dynamoDBService.getClientById(params.id);
+    return user
+      ? NextResponse.json(user)
+      : NextResponse.json({ error: 'not found' }, { status: 404 });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
 }
 
 /**
@@ -19,13 +22,30 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const { name, email } = await req.json();
   try {
-    const user = await prisma.user.update({
-      where: { id: params.id },
-      data: { name, email },
-    });
-    return NextResponse.json(user);
-  } catch {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
+    // Check if email is being updated and if it's already taken by another user
+    if (email) {
+      const existingUsers = await dynamoDBService.getAllClients();
+      const emailTaken = existingUsers.some(user => user.email === email && user.id !== params.id);
+      
+      if (emailTaken) {
+        return NextResponse.json(
+          { error: 'email must be unique' },
+          { status: 409 }
+        );
+      }
+    }
+
+    const updates: any = {};
+    if (name) updates.name = name;
+    if (email) updates.email = email;
+
+    const user = await dynamoDBService.updateClient(params.id, updates);
+    return user
+      ? NextResponse.json(user)
+      : NextResponse.json({ error: 'not found' }, { status: 404 });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }
 
@@ -34,9 +54,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
  */
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await prisma.user.delete({ where: { id: params.id } });
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
+    // Check if user exists first
+    const user = await dynamoDBService.getClientById(params.id);
+    if (!user) {
+      return NextResponse.json({ error: 'not found' }, { status: 404 });
+    }
+
+    const success = await dynamoDBService.deleteClient(params.id);
+    return success
+      ? NextResponse.json({ ok: true })
+      : NextResponse.json({ error: 'failed to delete' }, { status: 500 });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }

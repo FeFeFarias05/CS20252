@@ -1,30 +1,15 @@
 version: '3.9'
 
 services:
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: appdb
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-
   app:
     build: .
     image: cs20252:latest
-    depends_on:
-      - db
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/appdb?schema=public
-      NODE_ENV: development
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      DYNAMODB_TABLE_NAME: ${DYNAMODB_TABLE_NAME:-Client}
+      NODE_ENV: production
     ports:
       - "3000:3000"
-    command: >-
-      sh -c "npx prisma migrate deploy && npm run start"
-
-volumes:
-  db_data:
+    command: npm run start
