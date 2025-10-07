@@ -123,3 +123,28 @@ O workflow em `.github/workflows/ci.yml` executa automaticamente os passos de in
 - `ci: add github actions workflow`
 - `docs: add README with run/test instructions`
 - `chore(docker): add dockerfile and compose with postgres`
+
+# Sprint 1 – Definição e Gerenciamento de Infraestrutura como Código (IaC)
+
+## Como rodar
+
+1. Configure as variáveis de ambiente (`.env`)
+2. Faça o build da imagem Docker:
+   - O build é feito automaticamente pelo GitHub Actions, mas pode ser feito localmente com:
+     ```
+     docker build -t seu-projeto .
+     ```
+3. Provisionamento da infraestrutura:
+   - Configure suas credenciais AWS
+   - Execute:
+     ```
+     cd infra
+     terraform init
+     terraform apply
+     ```
+4. O deploy automático pode ser feito via GitHub Actions ao dar push na branch `main`.
+
+## Estrutura
+
+- `infra/`: scripts Terraform
+- `.github/workflows/`: automações CI/CD
