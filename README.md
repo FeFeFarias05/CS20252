@@ -36,118 +36,18 @@ Este repositório implementa a Sprint 0 de uma aplicação base utilizando **Ne
 
 ## 🚀 Como Executar
 
-### Comandos
-
-**Primeira vez:**
-```bash
-cd sprint0-app
-npm install
-docker-compose up -d db
-npx prisma generate
-npx prisma db push
-npm run dev
-```
-
-**Das próximas vezes:**
-```bash
-docker-compose up -d db
-npm run dev
-```
-
----
-
 Você pode rodar o projeto de duas formas: via **Docker** (recomendado) ou localmente.
 
-### ✅ Setup Inicial (Primeira vez)
+### Rodando com Docker
 
-1. **Clone o repositório e navegue para o diretório:**
-```bash
-cd sprint0-app
-```
-
-2. **Instale as dependências:**
-```bash
-npm install
-```
-
-3. **Configure o ambiente:**
-   - O arquivo `.env` já está configurado com PostgreSQL
-   - Não é necessário alterar nada se você seguir os próximos passos
-
-### 🐳 Rodando com PostgreSQL (Recomendado)
-
-**Para sempre rodar a aplicação com dados persistentes:**
-
-1. **Inicie o Docker Desktop** (aplicação gráfica)
-
-2. **Suba apenas o PostgreSQL:**
-```bash
-docker-compose up -d db
-```
-
-3. **Verifique se o PostgreSQL está rodando:**
-```bash
-docker ps
-```
-
-4. **Configure o banco de dados:**
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-5. **Inicie a aplicação:**
-```bash
-npm run dev
-```
-
-A aplicação estará disponível em `http://localhost:3000` com dados persistentes no PostgreSQL.
-
-### 🔄 Comandos para sempre rodar
-
-**Se a aplicação já foi configurada antes, use apenas:**
+1. Copie `.env.example` para `.env` e ajuste a variável `DATABASE_URL` se necessário. Por padrão ela aponta para o serviço `db` do docker-compose.
+2. Execute:
 
 ```bash
-# 1. Suba o PostgreSQL
-docker-compose up -d db
-
-# 2. Inicie a aplicação
-npm run dev
+docker compose up -d
 ```
 
-### 🛠️ Comandos Úteis
-
-**Parar processo na porta 3000:**
-```bash
-lsof -ti:3000 | xargs kill -9
-```
-
-**Ver usuários cadastrados:**
-```bash
-node listar-usuarios.js
-```
-
-**Parar PostgreSQL:**
-```bash
-docker-compose down
-```
-
-**Ver logs do PostgreSQL:**
-```bash
-docker-compose logs db
-```
-
-### 💻 Alternativa: Rodando localmente (sem Docker)
-
-⚠️ **Não recomendado para desenvolvimento em equipe** - Os dados não serão compartilhados.
-
-Para rodar sem Docker você precisa ter Node.js (>=20) e PostgreSQL instalado localmente.
-
-1. Configure PostgreSQL local e ajuste o `.env` com sua connection string
-2. Execute as migrações: `npm run migrate`  
-3. Inicie: `npm run dev`
-
-
+Isso irá subir um container PostgreSQL e o app Next.js já com as migrações aplicadas. O aplicativo ficará acessível em `http://localhost:3000`.
 
 ### Rodando localmente
 
@@ -177,40 +77,7 @@ npm run migrate
 npm run dev
 ```
 
-3. Inicie: `npm run dev`
-
 O servidor ficará disponível em `http://localhost:3000`.
-
-## 🔧 Solução de Problemas
-
-### Erro: "address already in use :::3000"
-```bash
-lsof -ti:3000 | xargs kill -9
-npm run dev
-```
-
-### Erro: "Cannot connect to the Docker daemon"
-1. Abra o Docker Desktop (aplicação gráfica)
-2. Aguarde inicializar completamente
-3. Execute: `docker ps` para verificar
-
-### PostgreSQL não conecta
-```bash
-# Verifique se está rodando
-docker ps
-
-# Se não estiver, suba novamente
-docker-compose up -d db
-
-# Verifique os logs
-docker-compose logs db
-```
-
-### Banco de dados desatualizado
-```bash
-npx prisma db push
-npx prisma generate
-```
 
 ## 🗃️ Rotas da API
 
@@ -232,32 +99,8 @@ curl -X POST http://localhost:3000/api/users \
   -d '{"name":"Maria","email":"maria@example.com"}'
 ```
 
-
-Exemplo com `curl` para listar todos usuários usuário:
-
-```bash
-curl -X GET http://localhost:3000/api/users | jq
-```
-
-Exemplo com `curl` para buscar um usuário específico:
-
-```bash
-curl -X GET http://localhost:3000/api/users/id
-
-Exemplo com `curl` para deletar um usuário:
-
-# Primeiro, pegue o ID do usuário
-```bash
-curl -s http://localhost:3000/api/users | jq '.[] | {id, name, email}'
-```
-
-# Depois delete usando o ID
-```bash
-curl -X DELETE http://localhost:3000/api/users/ID_DO_USUARIO
-```
-
-
 ## 🧪 Testes
+
 Os testes utilizam **Jest** e **supertest** para validar as rotas da API. Para executá‑los:
 
 ```bash

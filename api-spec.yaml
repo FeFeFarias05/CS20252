@@ -1,0 +1,317 @@
+openapi: 3.0.3
+info:
+  title: Users API
+  description: API para gerenciamento de usuários - Sprint 0
+  version: 1.0.0
+  contact:
+    name: Construção de Software PUCRS
+    email: contato@exemplo.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de desenvolvimento local
+  - url: https://seu-app.herokuapp.com/api
+    description: Servidor de produção
+
+paths:
+  /users:
+    get:
+      summary: Listar todos os usuários
+      description: Retorna uma lista de todos os usuários ordenados por data de criação (mais recentes primeiro)
+      tags:
+        - Users
+      responses:
+        '200':
+          description: Lista de usuários retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+              examples:
+                success:
+                  summary: Exemplo de resposta de sucesso
+                  value:
+                    - id: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+                      name: "João Silva"
+                      email: "joao@example.com"
+                      createdAt: "2025-08-18T21:00:17.414Z"
+                      updatedAt: "2025-08-18T21:00:17.414Z"
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                server_error:
+                  summary: Erro do servidor
+                  value:
+                    error: "internal"
+
+    post:
+      summary: Criar um novo usuário
+      description: Cria um novo usuário no sistema
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              valid_user:
+                summary: Exemplo de usuário válido
+                value:
+                  name: "Maria Santos"
+                  email: "maria@example.com"
+      responses:
+        '201':
+          description: Usuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                created_user:
+                  summary: Usuário criado
+                  value:
+                    id: "6e9f2a5f-5205-4b96-814f-626477f00a5d"
+                    name: "Maria Santos"
+                    email: "maria@example.com"
+                    createdAt: "2025-08-18T21:03:45.123Z"
+                    updatedAt: "2025-08-18T21:03:45.123Z"
+        '400':
+          description: Dados de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_fields:
+                  summary: Campos obrigatórios ausentes
+                  value:
+                    error: "name/email required"
+                invalid_email:
+                  summary: Email inválido
+                  value:
+                    error: "Invalid email format"
+        '409':
+          description: Email já está em uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                duplicate_email:
+                  summary: Email duplicado
+                  value:
+                    error: "email must be unique"
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                server_error:
+                  summary: Erro do servidor
+                  value:
+                    error: "internal"
+
+  /users/{id}:
+    get:
+      summary: Buscar usuário por ID
+      description: Retorna um usuário específico pelo seu ID
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do usuário (UUID)
+          schema:
+            type: string
+            format: uuid
+            example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+      responses:
+        '200':
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Usuário não encontrado
+                  value:
+                    error: "User not found"
+
+    put:
+      summary: Atualizar usuário
+      description: Atualiza os dados de um usuário existente
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do usuário (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Usuário atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email já está em uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Deletar usuário
+      description: Remove um usuário do sistema
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do usuário (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Usuário deletado com sucesso
+        '404':
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único do usuário
+          example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nome completo do usuário
+          example: "João Silva"
+        email:
+          type: string
+          format: email
+          description: Endereço de email do usuário (único)
+          example: "joao@example.com"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora de criação do usuário
+          example: "2025-08-18T21:00:17.414Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização
+          example: "2025-08-18T21:00:17.414Z"
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nome completo do usuário
+          example: "Maria Santos"
+        email:
+          type: string
+          format: email
+          description: Endereço de email único do usuário
+          example: "maria@example.com"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nome completo do usuário
+          example: "Maria Santos Silva"
+        email:
+          type: string
+          format: email
+          description: Endereço de email único do usuário
+          example: "maria.silva@example.com"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Mensagem de erro
+          example: "Invalid input data"
+        details:
+          type: string
+          description: Detalhes adicionais sobre o erro
+          example: "The email field must be a valid email address"
+
+tags:
+  - name: Users
+    description: Operações relacionadas aos usuários
+
+# Códigos de erro específicos do Prisma
+# P2002: Unique constraint violation (email duplicado)
+# P2025: Record not found (usuário não encontrado)
