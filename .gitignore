@@ -70,3 +70,12 @@ prisma/migrations/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+*.tar
+
+# AWS credentials
+.aws/
