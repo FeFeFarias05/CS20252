@@ -1,24 +1,22 @@
-# ================= VPC Default =================
+# ================== Provider ==================
+provider "aws" {
+  region = "us-east-1"
+}
+
+# ================== VPC Default ==================
 data "aws_vpc" "default" {
   default = true
 }
 
-# ================= Security Group =================
+# ================== Security Group ==================
 resource "aws_security_group" "allow_http" {
   name        = "allow_http"
-  description = "Allow HTTP and SSH traffic"
+  description = "Allow HTTP traffic"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port   = 3000
     to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -31,10 +29,10 @@ resource "aws_security_group" "allow_http" {
   }
 }
 
-# ================= Data Source AMI =================
+# ================== Data Source AMI ==================
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical (Ubuntu official)
+  owners      = ["099720109477"] # Canonical (Ubuntu)
 
   filter {
     name   = "name"
@@ -42,21 +40,23 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# ================= Instância EC2 =================
+# ================== EC2 Instance ==================
 resource "aws_instance" "app_instance" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = "t2.micro"
-  key_name      = var.key_name
-  security_groups = [aws_security_group.allow_http.name]
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t2.micro"
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.allow_http.id]
+
+  iam_instance_profile   = "LabInstanceProfile"
 
   user_data = <<-EOF
     #!/bin/bash
     sudo apt update -y
-    sudo apt install docker.io awscli -y
-    sudo systemctl start docker
+    sudo apt install -y docker.io
     sudo systemctl enable docker
-
-    echo "EC2 pronta! Faça login manualmente no ECR e rode o container."
+    sudo systemctl start docker
+    sudo docker pull fernetest/cs20252:latest
+    sudo docker run -d -p 3000:3000 fernetest/cs20252:latest
   EOF
 
   tags = {
@@ -64,29 +64,14 @@ resource "aws_instance" "app_instance" {
   }
 }
 
-# ================= ECR Repository =================
-resource "aws_ecr_repository" "app_repository" {
-  name                 = "cs20252-app"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Name = "cs20252-app"
-  }
-}
-
-# ================= DynamoDB =================
-resource "aws_dynamodb_table" "example_table" {
+# ================== DynamoDB Table ==================
+resource "aws_dynamodb_table" "client_table" {
   name         = var.table_name
   billing_mode = "PAY_PER_REQUEST"
 
-  hash_key = "id"
-
+  hash_key  = "clientId"
   attribute {
-    name = "id"
+    name = "clientId"
     type = "S"
   }
 
@@ -95,7 +80,7 @@ resource "aws_dynamodb_table" "example_table" {
   }
 }
 
-# ================= Bucket S3 =================
+# ================== S3 Bucket ==================
 resource "aws_s3_bucket" "example_bucket" {
   bucket = var.bucket_name
 
