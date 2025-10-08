@@ -1,0 +1,15 @@
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Region (optional, defaults to us-east-1)
+aws_region = "us-east-1"
+
+# EC2 Key Pair name (required)
+# Create a key pair in AWS Console first
+key_name = "your-ec2-key-pair-name"
+
+# S3 Bucket name (must be globally unique)
+bucket_name = "cs20252-bucket-your-unique-suffix"
+
+# DynamoDB Table name
+table_name = "Client"
