@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (email) {
       const existingClients = await dynamoDBService.getAllClients();
       const emailExists = existingClients.some(client => 
-        client.email === email && client.id !== params.id
+        client.email === email && client.clientId !== params.id
       );
       
       if (emailExists) {

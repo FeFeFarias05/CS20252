@@ -22,10 +22,10 @@ describe('User CRUD Tests', () => {
       email: 'test@example.com'
     });
 
-    testUserIds.push(user.id);
+    testUserIds.push(user.clientId);
     expect(user.name).toBe('Test User');
     expect(user.email).toBe('test@example.com');
-    expect(user.id).toBeDefined();
+    expect(user.clientId).toBeDefined();
     expect(user.createdAt).toBeDefined();
   });
 
@@ -35,9 +35,9 @@ describe('User CRUD Tests', () => {
       name: 'Read Test',
       email: 'read@example.com'
     });
-    testUserIds.push(created.id);
+    testUserIds.push(created.clientId);
 
-    const user = await dynamoDBService.getClientById(created.id);
+    const user = await dynamoDBService.getClientById(created.clientId);
 
     expect(user).not.toBeNull();
     expect(user?.name).toBe('Read Test');
@@ -50,9 +50,9 @@ describe('User CRUD Tests', () => {
       name: 'Original',
       email: 'original@example.com'
     });
-    testUserIds.push(created.id);
+    testUserIds.push(created.clientId);
 
-    const updated = await dynamoDBService.updateClient(created.id, {
+    const updated = await dynamoDBService.updateClient(created.clientId, {
       name: 'Updated'
     });
 
@@ -68,10 +68,10 @@ describe('User CRUD Tests', () => {
       email: 'delete@example.com'
     });
 
-    const deleteResult = await dynamoDBService.deleteClient(created.id);
+    const deleteResult = await dynamoDBService.deleteClient(created.clientId);
     expect(deleteResult).toBe(true);
 
-    const deleted = await dynamoDBService.getClientById(created.id);
+    const deleted = await dynamoDBService.getClientById(created.clientId);
     expect(deleted).toBeNull();
   });
 });

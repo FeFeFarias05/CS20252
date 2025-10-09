@@ -10,10 +10,14 @@ import {
 
 const client = new DynamoDBClient({ 
   region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  }
+  // Se as credenciais estiverem definidas no .env, use-as; caso contrário, o SDK da AWS
+  // buscará automaticamente as credenciais do arquivo ~/.aws/credentials
+  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    }
+  } : {})
 });
 
 const dynamodb = DynamoDBDocumentClient.from(client);
@@ -21,9 +25,10 @@ const dynamodb = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "Client";
 
 export interface Client {
-  id: string;
+  clientId: string;
   name: string;
   email: string;
+  phone?: string;
   createdAt: string;
 }
 
@@ -43,10 +48,10 @@ export class DynamoDBService {
   }
 
 
-  async createClient(client: Omit<Client, 'id' | 'createdAt'>): Promise<Client> {
+  async createClient(client: Omit<Client, 'clientId' | 'createdAt'>): Promise<Client> {
     try {
       const newClient: Client = {
-        id: crypto.randomUUID(),
+        clientId: crypto.randomUUID(),
         ...client,
         createdAt: new Date().toISOString(),
       };
@@ -64,11 +69,11 @@ export class DynamoDBService {
     }
   }
 
-  async getClientById(id: string): Promise<Client | null> {
+  async getClientById(clientId: string): Promise<Client | null> {
     try {
       const command = new GetCommand({
         TableName: TABLE_NAME,
-        Key: { id },
+        Key: { clientId },
       });
 
       const response = await dynamodb.send(command);
@@ -79,7 +84,7 @@ export class DynamoDBService {
     }
   }
 
-  async updateClient(id: string, updates: Partial<Omit<Client, 'id' | 'createdAt'>>): Promise<Client | null> {
+  async updateClient(clientId: string, updates: Partial<Omit<Client, 'clientId' | 'createdAt'>>): Promise<Client | null> {
     try {
       const updateExpression = [];
       const expressionAttributeValues: any = {};
@@ -93,7 +98,7 @@ export class DynamoDBService {
 
       const command = new UpdateCommand({
         TableName: TABLE_NAME,
-        Key: { id },
+        Key: { clientId },
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
@@ -108,11 +113,11 @@ export class DynamoDBService {
     }
   }
 
-  async deleteClient(id: string): Promise<boolean> {
+  async deleteClient(clientId: string): Promise<boolean> {
     try {
       const command = new DeleteCommand({
         TableName: TABLE_NAME,
-        Key: { id },
+        Key: { clientId },
       });
 
       await dynamodb.send(command);

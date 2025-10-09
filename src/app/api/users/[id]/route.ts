@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Check if email is being updated and if it's already taken by another user
     if (email) {
       const existingUsers = await dynamoDBService.getAllClients();
-      const emailTaken = existingUsers.some(user => user.email === email && user.id !== params.id);
+      const emailTaken = existingUsers.some(user => user.email === email && user.clientId !== params.id);
       
       if (emailTaken) {
         return NextResponse.json(
