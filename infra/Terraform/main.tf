@@ -1,10 +1,8 @@
-
 # ================== VPC Default ==================
 data "aws_vpc" "default" {
   default = true
 }
 
-# ================== Security Group ==================
 resource "aws_security_group" "allow_http" {
   name        = "allow_http"
   description = "Allow HTTP traffic"
@@ -13,6 +11,21 @@ resource "aws_security_group" "allow_http" {
   ingress {
     from_port   = 3000
     to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Nova regra para DynamoDB Admin
+  ingress {
+    from_port   = 8001
+    to_port     = 8001
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -28,6 +41,7 @@ resource "aws_security_group" "allow_http" {
     Name = "allow_http"
   }
 }
+
 
 # ================== Data Source AMI ==================
 data "aws_ami" "ubuntu" {
@@ -50,17 +64,30 @@ resource "aws_instance" "app_instance" {
   iam_instance_profile   = "LabInstanceProfile"
 
   user_data = <<-EOF
-    #!/bin/bash
-    set -e
+#!/bin/bash
+set -e
 
-    # Atualiza pacotes e instala Docker
-    sudo apt update -y
-    sudo apt install -y docker.io
-    sudo systemctl enable docker
-    sudo systemctl start docker
-    sudo docker pull fernetest/cs20252:latest
-    sudo docker run -d -p 3000:3000 fernetest/cs20252:latest
-  EOF
+# Atualiza pacotes e instala Docker e Git
+sudo apt update -y
+sudo apt install -y docker.io git
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Clonar repositório que contém Dockerfile
+git clone https://github.com/FeFeFarias05/CS20252.git /app
+cd /app
+
+# Build da imagem Docker local
+sudo docker build -t cs20252:latest .
+
+# Rodar o container
+sudo docker run -d -p 3000:3000 \
+  -e AWS_REGION=${var.aws_region} \
+  -e DYNAMODB_TABLE_NAME=${var.table_name} \
+  -e NODE_ENV=production \
+  cs20252:latest
+EOF
+
 
   tags = {
     Name = "cs20252AF"
