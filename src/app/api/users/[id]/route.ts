@@ -69,3 +69,49 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }
+
+/**
+ * GET `/api/users/` – fetch all users.
+ */
+export async function GETAll() {
+  try {
+    const users = await dynamoDBService.getAllClients();
+    return NextResponse.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
+}
+
+/**
+ * POST `/api/users/` – create a new user.
+ */
+export async function POST(req: NextRequest) {
+  const { name, email } = await req.json();
+  if (!name || !email) {
+    return NextResponse.json(
+      { error: 'name and email are required' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // Check if email is already taken
+    const existingUsers = await dynamoDBService.getAllClients();
+    const emailTaken = existingUsers.some(user => user.email === email);
+    
+    if (emailTaken) {
+      return NextResponse.json(
+        { error: 'email must be unique' },
+        { status: 409 }
+      );
+    }
+
+    const newUser = await dynamoDBService.createClient({ name, email });
+    return NextResponse.json(newUser, { status: 201 });
+  } catch (error) {
+    console.error('Error creating user:', error
+    );
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
+} 
