@@ -105,6 +105,15 @@ resource "aws_s3_bucket" "example_bucket" {
   }
 }
 
+resource "aws_s3_bucket" "example_second_bucket" {
+  bucket = var.second_bucket_name
+
+  tags = {
+    Name = var.second_bucket_name
+  }
+}
+
+
 output "ec2_public_ip" {
   value = aws_instance.app_instance.public_ip
 }
