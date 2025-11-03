@@ -1,38 +1,63 @@
-// src/app/api/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/withAuth';
-import { isAdmin } from '@/lib/auth/permissions';
-import prisma from '@/lib/prisma';
+import { dynamoDBService } from '@/lib/dynamodb';
+import { requireAdmin } from '@/lib/auth/rbac';
 
-export async function GET(req: Request) {
+/**
+ * GET /api/users → somente admin
+ */
+export async function GET(req: NextRequest) {
+  const payload = await requireAdmin(req);
+  if (payload instanceof Response) return payload;
+
   try {
-    const nr: any = req;
-    const { auth } = await requireAuth(nr);
-
-    if (!isAdmin(auth)) {
-      return new NextResponse(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
-    }
-
-    const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
-    return NextResponse.json(users);
-  } catch (err: any) {
-    const msg = err?.message ?? 'Unauthorized';
-    return new NextResponse(JSON.stringify({ error: msg }), { status: 401 });
+    const users = await dynamoDBService.getAllClients();
+    const sortedUsers = users.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return NextResponse.json(sortedUsers);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(req: Request) {
+/**
+ * POST /api/users → somente admin
+ * Cria um novo usuário. `name` e `email` são obrigatórios e email deve ser único.
+ */
+export async function POST(req: NextRequest) {
+  const payload = await requireAdmin(req);
+  if (payload instanceof Response) return payload;
+
+  const { name, email } = await req.json();
+  if (!name || !email) {
+    return NextResponse.json(
+      { error: 'name/email required' },
+      { status: 400 },
+    );
+  }
+
   try {
-    const nr: any = req;
-    const { auth } = await requireAuth(nr);
-    if (!isAdmin(auth)) {
-      return new NextResponse(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    const existingUsers = await dynamoDBService.getAllClients();
+    const emailExists = existingUsers.some(user => user.email === email);
+    
+    if (emailExists) {
+      return NextResponse.json(
+        { error: 'email must be unique' },
+        { status: 409 },
+      );
     }
 
-    const body = await req.json();
-    const created = await prisma.user.create({ data: { name: body.name, email: body.email } });
-    return new NextResponse(JSON.stringify(created), { status: 201 });
-  } catch (err: any) {
-    return new NextResponse(JSON.stringify({ error: err?.message ?? 'Unauthorized' }), { status: 401 });
+    const user = await dynamoDBService.createClient({ name, email });
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return NextResponse.json(
+      { error: 'internal' },
+      { status: 500 },
+    );
   }
 }
