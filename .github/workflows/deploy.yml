@@ -3,7 +3,7 @@ name: Deploy to AWS EC2 via ECR
 on:
   push:
     branches:
-      - fe
+      - '**'
     paths:
       - 'src/**'
       - 'Dockerfile'
