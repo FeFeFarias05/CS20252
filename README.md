@@ -1,57 +1,87 @@
-# Sprint 0 – Setup de Time, Stack e Projeto
+# Sprint 0 – Setup de Time, Stack e Projeto
 
-Este repositório implementa a Sprint 0 de uma aplicação base utilizando **Next.js** com **TypeScript**, **Prisma ORM** e **PostgreSQL**. O objetivo é prover uma estrutura mínima, pronta para desenvolvimento incremental com testes, CI e orquestração via Docker.
+Este repositório implementa a Sprint 0 e Sprint 1 de uma aplicação base utilizando **Next.js**, **TypeScript** e **AWS DynamoDB**.  
+O objetivo é prover uma estrutura mínima e segura, com autenticação JWT baseada em JWKS remoto, autorização RBAC (Role-Based Access Control), testes automatizados e infraestrutura definida como código via **Terraform**.
+
+---
 
 ## 🔧 Stack
 
-- **Linguagem:** TypeScript
-- **Framework:** React com Next.js (App Router)
-- **Banco:** PostgreSQL (via Prisma ORM)
+- **Linguagem:** TypeScript  
+- **Framework:** React com Next.js (App Router)  
+- **Banco:** AWS DynamoDB (via SDK Document Client)  
+- **Autenticação:** JWT (biblioteca `jose`, JWKS remoto)  
+- **Infraestrutura:** Terraform (Cognito, DynamoDB, EC2, S3, VPC)  
+- **Testes:** Jest + Supertest  
+- **CI/CD:** GitHub Actions  
+
+---
 
 ## 📂 Estrutura de Pastas
 
 ```
 .
-├─ .github/workflows/ci.yml       # Pipeline de integração contínua
-├─ prisma/
-│  ├─ schema.prisma              # Definição do modelo e datasource
-│  └─ migrations/…               # Migrações geradas pelo Prisma
+├─ .github/workflows/ci.yml        # Pipeline de integração contínua
+├─ infra/                          # Provisionamento IaC (Terraform)
+│  ├─ main.tf                      # DynamoDB, Cognito, EC2, S3, VPC
+│  └─ variables.tf                 # Variáveis e outputs
 ├─ src/
 │  ├─ app/
 │  │  ├─ api/
 │  │  │  └─ users/
-│  │  │     ├─ [id]/route.ts     # Rotas GET/PUT/DELETE por ID
-│  │  │     └─ route.ts          # Rotas GET/POST de usuários
-│  │  └─ page.tsx                # Página inicial simples
-│  └─ lib/                       # (reservado para utilidades futuras)
-├─ __tests__/users.api.test.ts    # Testes de integração das rotas
-├─ docker-compose.yml             # Orquestração de app e banco
-├─ Dockerfile                     # Build para produção
-├─ jest.config.ts                 # Configuração do Jest
-├─ package.json                   # Dependências e scripts
-├─ tsconfig.json                  # Configuração TypeScript
-├─ .env.example                   # Exemplo de variáveis de ambiente
-└─ README.md                      # Este guia
+│  │  │     ├─ [id]/route.ts       # Rotas GET/PUT/DELETE protegidas
+│  │  │     └─ route.ts            # Rotas GET/POST de usuários (admin)
+│  │  └─ page.tsx                  # Página inicial simples
+│  ├─ lib/
+│  │  ├─ auth/
+│  │  │  ├─ jwt.ts                 # Verificação JWT via JWKS remoto
+│  │  │  └─ rbac.ts                # Middleware RBAC (admin/self)
+│  │  └─ dynamodb.ts               # Serviço de acesso ao DynamoDB
+├─ tests/
+│  ├─ api.test.ts                  # Testes RBAC e endpoints
+│  ├─ dynamodb.test.ts             # Testes unitários do DynamoDB
+│  ├─ user.auth.test.ts            # Integração JWT + JWKS mock
+│  ├─ auth.test.ts                 # Middleware de autenticação
+│  └─ jwks-mock.ts                 # Servidor mock JWKS
+├─ jest.config.ts                  # Configuração Jest
+├─ package.json                    # Scripts e dependências
+├─ tsconfig.json                   # Configuração TypeScript
+├─ .env.example                    # Variáveis de ambiente exemplo
+└─ README.md                       # Este guia
 ```
+
+---
 
 ## 🚀 Como Executar
 
-Você pode rodar o projeto de duas formas: via **Docker** (recomendado) ou localmente.
+Você pode rodar o projeto de duas formas: via **Docker** (recomendado) ou **localmente**.
 
 ### Rodando com Docker
 
-1. Copie `.env.example` para `.env` e ajuste a variável `DATABASE_URL` se necessário. Por padrão ela aponta para o serviço `db` do docker-compose.
-2. Execute:
+1. Copie o arquivo `.env.example` para `.env` e ajuste as variáveis conforme seu ambiente (principalmente as de JWT e AWS):
+
+```
+JWKS_URI=http://localhost:8001/.well-known/jwks.json
+JWT_ISSUER=http://test-issuer
+JWT_AUDIENCE=test-aud
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+DYNAMODB_TABLE=clients
+```
+
+2. Suba os containers:
 
 ```bash
 docker compose up -d
 ```
 
-Isso irá subir um container PostgreSQL e o app Next.js já com as migrações aplicadas. O aplicativo ficará acessível em `http://localhost:3000`.
+Isso iniciará o app Next.js e um DynamoDB local.  
+A aplicação ficará disponível em **http://localhost:3000**.
+
+---
 
 ### Rodando localmente
-
-Para rodar sem Docker você precisa ter Node JS (>=20) e um banco PostgreSQL disponíveis.
 
 1. Instale as dependências:
 
@@ -59,96 +89,133 @@ Para rodar sem Docker você precisa ter Node JS (>=20) e um banco PostgreSQL di
 npm install
 ```
 
-2. Ajuste a variável `DATABASE_URL` em um arquivo `.env` apontando para seu banco local, por exemplo:
+2. Ajuste as variáveis `.env` conforme acima.
 
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/appdb?schema=public"
-```
-
-3. Execute as migrações:
-
-```bash
-npm run migrate
-```
-
-4. Inicie o servidor de desenvolvimento:
+3. Inicie o servidor:
 
 ```bash
 npm run dev
 ```
 
-O servidor ficará disponível em `http://localhost:3000`.
+4. O servidor ficará disponível em **http://localhost:3000**.
+
+---
 
 ## 🗃️ Rotas da API
 
-Todas as rotas estão sob o prefixo `/api/users`.
+Todas as rotas estão sob o prefixo `/api/users`.  
+A autenticação é feita via JWT (`Authorization: Bearer <token>`).
 
-| Método | Rota              | Descrição                                                     | Payload de exemplo |
-|-------:|:------------------|:--------------------------------------------------------------|:-------------------|
-| `GET`  | `/api/users`      | Lista todos os usuários ordenados por criação (desc).         | —                 |
-| `POST` | `/api/users`      | Cria um usuário. Campos `name` e `email` são obrigatórios.    | `{ "name": "João", "email": "joao@exemplo.com" }` |
-| `GET`  | `/api/users/:id`   | Busca um usuário pelo `id`. Retorna 404 se não existir.        | —                 |
-| `PUT`  | `/api/users/:id`   | Atualiza `name` e/ou `email` de um usuário existente.         | `{ "name": "João Atualizado", "email": "novo@exemplo.com" }` |
-| `DELETE` | `/api/users/:id` | Remove um usuário pelo `id`. Retorna 404 se não existir.      | —                 |
+| Método | Rota | Acesso | Descrição | Payload de Exemplo |
+|:-------|:------|:--------|:-----------|:------------------|
+| `GET` | `/api/users` | **Admin** | Lista todos os usuários ordenados por data de criação (desc). | — |
+| `POST` | `/api/users` | **Admin** | Cria um usuário com `name` e `email` (único). | `{ "name": "João", "email": "joao@exemplo.com" }` |
+| `GET` | `/api/users/:id` | **Self/Admin** | Retorna um usuário por ID. | — |
+| `PUT` | `/api/users/:id` | **Self/Admin** | Atualiza nome/e-mail de um usuário. | `{ "name": "Maria", "email": "maria@novo.com" }` |
+| `DELETE` | `/api/users/:id` | **Admin** | Remove usuário pelo ID. | — |
 
-Exemplo com `curl` para criar um usuário:
+Exemplo com `curl`:
 
 ```bash
-curl -X POST http://localhost:3000/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Maria","email":"maria@example.com"}'
+curl -X POST http://localhost:3000/api/users   -H "Authorization: Bearer <token-admin>"   -H "Content-Type: application/json"   -d '{"name":"Maria","email":"maria@example.com"}'
 ```
+
+---
+
+## 🔐 Autenticação e Autorização (RBAC)
+
+A autenticação é baseada em **JWT** com verificação via **JWKS remoto**.  
+O middleware `requireAdmin` e `requireSelfOrAdmin` garantem acesso restrito a papéis e identidades.
+
+- `401` → token ausente ou inválido  
+- `403` → usuário sem permissão (não admin / não self)  
+- `200` → acesso concedido  
+
+---
+
+## 💾 Persistência – AWS DynamoDB
+
+Os dados são armazenados na tabela `clients`, definida via Terraform.  
+O serviço `dynamoDBService` implementa as operações CRUD:
+
+- `createClient({ name, email })`  
+- `getClientById(id)`  
+- `getAllClients()`  
+- `updateClient(id, data)`  
+- `deleteClient(id)`
+
+O campo `createdAt` é utilizado para ordenação.  
+Cada item é identificado por um `id` UUID gerado automaticamente.
+
+---
+
+## ☁️ Infraestrutura (Terraform)
+
+A infraestrutura AWS é definida como código em `infra/main.tf`:
+
+- ✅ DynamoDB (`clients`)  
+- ✅ Cognito User Pool (autenticação)  
+- ✅ EC2 (deploy da API)  
+- ✅ S3 (estáticos e logs)  
+- ✅ VPC e Security Groups  
+
+Para provisionar:
+
+```bash
+cd infra
+terraform init
+terraform apply
+```
+
+---
 
 ## 🧪 Testes
 
-Os testes utilizam **Jest** e **supertest** para validar as rotas da API. Para executá‑los:
+Os testes utilizam **Jest** e **Supertest**, cobrindo:
+
+| Arquivo | Escopo |
+|----------|--------|
+| `dynamodb.test.ts` | CRUD DynamoDB |
+| `api.test.ts` | Endpoints + RBAC |
+| `auth.test.ts` | Middleware JWT |
+| `user.auth.test.ts` | Integração JWT + JWKS mock |
+
+Para executar:
 
 ```bash
 npm test
 ```
 
-Certifique‑se de que a variável `DATABASE_URL` de testes aponta para um banco isolado. O pipeline de CI já configura `DATABASE_URL` para `appdb_ci`.
-
-## 🛠️ CI (GitHub Actions)
-
-O workflow em `.github/workflows/ci.yml` executa automaticamente os passos de instalação, migrações, lint, typecheck, build e testes a cada push ou pull request. Um serviço PostgreSQL é disponibilizado durante a execução para que os testes possam interagir com o banco.
+Os testes de integração utilizam um servidor JWKS mock (`tests/jwks-mock.ts`) e um DynamoDB local.
 
 ---
 
-💡 *Commits semânticos são recomendados para manter o histórico organizado.* Exemplos:
+## ⚙️ CI/CD (GitHub Actions)
 
-- `chore: init nextjs app with ts config`
-- `feat(api): implement users CRUD with prisma`
-- `test(api): add users CRUD integration tests`
-- `ci: add github actions workflow`
-- `docs: add README with run/test instructions`
-- `chore(docker): add dockerfile and compose with postgres`
+O workflow `.github/workflows/ci.yml` executa:
 
-# Sprint 1 – Definição e Gerenciamento de Infraestrutura como Código (IaC)
+1. Instalação de dependências  
+2. Typecheck e lint  
+3. Build do projeto  
+4. Subida de serviço DynamoDB local  
+5. Execução dos testes automatizados  
 
-## Como rodar
+O deploy pode ser automatizado com push na branch `main`, usando as credenciais AWS configuradas no repositório.
 
-1. Configure as variáveis de ambiente (`.env`)
-2. Faça o build da imagem Docker:
-   - O build é feito automaticamente pelo GitHub Actions, mas pode ser feito localmente com:
-     ```
-     docker build -t seu-projeto .
-     ```
-3. Provisionamento da infraestrutura:
-   - Configure suas credenciais AWS
-    ```
-     chmod +x aws-config.sh
-     ./aws-config.sh
-     ```
-   - Execute:
-     ```
-     cd infra
-     terraform init
-     terraform apply
-     ```
-4. O deploy automático pode ser feito via GitHub Actions ao dar push na branch `main`.
+---
 
-## Estrutura
+## 📘 Commits Recomendados
 
-- `infra/`: scripts Terraform
-- `.github/workflows/`: automações CI/CD
+Use commits semânticos para manter o histórico limpo:
+
+- `feat(api): add JWT RBAC middleware`
+- `feat(dynamodb): implement CRUD client service`
+- `test(api): add integration tests with mock JWKS`
+- `infra(terraform): add DynamoDB and Cognito resources`
+- `ci: setup GitHub Actions with DynamoDB local`
+- `docs: update README for Sprint 1`
+
+---
+
+💡 **Grupo:**  
+Ana Laura de Souza Lopes e Fernanda Farias Uberti

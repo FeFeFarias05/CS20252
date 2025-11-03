@@ -1,5 +1,4 @@
 import request from 'supertest';
-import { spawn } from 'child_process';
 import fetch from 'node-fetch';
 
 const API_BASE = process.env.TEST_API_BASE ?? 'http://localhost:3000';
@@ -23,7 +22,7 @@ test('GET /api/users should return 403 for non-admin token', async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ roles: ['user'], aud: process.env.JWT_AUDIENCE, iss: process.env.JWT_ISSUER }),
   });
-  const { token } = await resp.json();
+  const { token } = (await resp.json()) as { token: string };
   const res = await request(API_BASE).get('/api/users').set('Authorization', `Bearer ${token}`);
   expect(res.status).toBe(403);
 });
@@ -34,7 +33,7 @@ test('GET /api/users should return 200 for admin token', async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ roles: ['admin'], aud: process.env.JWT_AUDIENCE, iss: process.env.JWT_ISSUER }),
   });
-  const { token } = await resp.json();
+  const { token } = (await resp.json()) as { token: string };
   const res = await request(API_BASE).get('/api/users').set('Authorization', `Bearer ${token}`);
   expect([200, 204, 401, 403]).toContain(res.status);
 });
