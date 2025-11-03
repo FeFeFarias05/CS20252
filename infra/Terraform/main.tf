@@ -1,21 +1,6 @@
 # CS20252 - Infraestrutura AWS com Cognito
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-
-  required_version = ">= 1.7.0"
-}
-
-provider "aws" {
-  region = var.aws_region
-}
 
 # REDE E SEGURANÇA
-
 data "aws_vpc" "default" {
   default = true
 }
@@ -58,8 +43,14 @@ resource "aws_security_group" "allow_http" {
   }
 }
 
-# EC2 INSTANCE - Servidor da Aplicação
+# --- ECR Repository ---
+resource "aws_ecr_repository" "repository" {
+  name         = "cs2025af"
+  force_delete = true   # Permite excluir mesmo se tiver imagens
+}
 
+
+# EC2 INSTANCE - Servidor da Aplicação
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -77,31 +68,12 @@ resource "aws_instance" "app_instance" {
   vpc_security_group_ids = [aws_security_group.allow_http.id]
   iam_instance_profile   = "LabInstanceProfile"
 
-  user_data = <<-EOF
-#!/bin/bash
-set -e
-
-sudo apt update -y
-sudo apt install -y docker.io
-sudo systemctl enable docker
-sudo systemctl start docker
-
-sudo docker pull fernetest/cs20252:latest
-
-sudo docker run -d -p 3000:3000 \
-  -e AWS_REGION=${var.aws_region} \
-  -e DYNAMODB_TABLE_NAME=${var.table_name} \
-  -e NODE_ENV=production \
-  fernetest/cs20252:latest
-EOF
-
   tags = {
     Name = "cs20252AF"
   }
 }
 
 # DYNAMODB E S3
-
 resource "aws_dynamodb_table" "client_table" {
   name         = var.table_name
   billing_mode = "PAY_PER_REQUEST"
@@ -123,14 +95,6 @@ resource "aws_s3_bucket" "example_bucket" {
 
   tags = {
     Name = var.bucket_name
-  }
-}
-
-resource "aws_s3_bucket" "example_second_bucket" {
-  bucket = var.second_bucket_name
-
-  tags = {
-    Name = var.second_bucket_name
   }
 }
 
@@ -177,26 +141,16 @@ resource "aws_cognito_user_pool_client" "app_client" {
   name         = "cs20252-app-client"
   user_pool_id = aws_cognito_user_pool.users.id
 
-  generate_secret                     = false
+  generate_secret = true
   allowed_oauth_flows_user_pool_client = true
-
   allowed_oauth_flows = ["client_credentials"]
 
   allowed_oauth_scopes = [
-    "openid",
-    "email",
-    "aws.cognito.signin.user.admin",
     "${aws_cognito_resource_server.api.identifier}/read",
     "${aws_cognito_resource_server.api.identifier}/write"
   ]
-
-  explicit_auth_flows = [
-    "ALLOW_USER_SRP_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH"
-  ]
-
-  supported_identity_providers = ["COGNITO"]
 }
+
 
 # ADMIN USER
 resource "aws_cognito_user" "admin_user" {

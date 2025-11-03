@@ -1,0 +1,68 @@
+name: Deploy to AWS EC2 via ECR
+
+on:
+  push:
+    branches:
+      - fe
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - '.github/workflows/deploy.yaml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔁 Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configurar credenciais da AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 🧱 Fazer login no ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      - name: 🛠️ Build da imagem Docker
+        run: |
+          docker build -t cs2025af .
+
+      - name: 🏷️ Tag e Push para ECR
+        run: |
+          docker tag cs2025af:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+
+      - name: 🚀 Conectar via SSH na EC2 e atualizar container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "✅ Conectado na EC2, atualizando container..."
+            
+            # Login no ECR dentro da EC2
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+            docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+            # Parar container antigo (se existir)
+            docker stop cs2025-container || true
+            docker rm cs2025-container || true
+
+            # Puxar nova imagem
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+
+            # Subir container atualizado
+            docker run -d --name cs2025-container -p 3000:3000 \
+              -e AWS_REGION=${{ secrets.AWS_REGION }} \
+              -e DYNAMODB_TABLE_NAME=${{ secrets.DYNAMODB_TABLE_NAME }} \
+              -e NODE_ENV=production \
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+
+            echo "✅ Deploy concluído com sucesso!"

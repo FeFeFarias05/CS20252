@@ -13,10 +13,7 @@ variable "bucket_name" {
 }
 
 
-variable "second_bucket_name" {
-  description = "Nome do bucket S3"
-  type        = string
-}
+
 
 variable "table_name" {
   description = "Nome da tabela DynamoDB"
