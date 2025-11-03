@@ -4,15 +4,17 @@ describe('User CRUD Tests', () => {
   let testUserIds: string[] = [];
 
   afterEach(async () => {
-    // Clean up test users
     for (const id of testUserIds) {
-      try {
-        await dynamoDBService.deleteClient(id);
-      } catch (error) {
-        console.warn(`Failed to delete test user ${id}:`, error);
-      }
+      try { await dynamoDBService.deleteClient(id); } catch {}
     }
     testUserIds = [];
+  });
+
+  it('should create a user', async () => {
+    const user = await dynamoDBService.createClient({ name: 'Test', email: 'test@example.com' });
+    testUserIds.push(user.clientId);
+    expect(user.clientId).toBeDefined();
+    expect(user.name).toBe('Test');
   });
 
   // CREATE

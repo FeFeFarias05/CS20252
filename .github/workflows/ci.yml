@@ -21,17 +21,44 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+      dynamodb:
+        image: amazon/dynamodb-local
+        ports:
+          - '8000:8000'
+        options: >-
+          -jar DynamoDBLocal.jar -inMemory -sharedDb
+
     env:
       DATABASE_URL: ""
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
+      JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
+      JWKS_URI: ${{ secrets.JWKS_URI }}
+      NODE_ENV: test
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      - run: npm run test:coverage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+
+      - name: Generate OpenAPI docs
+        run: npm run docs:build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openapi-docs
+          path: docs/
