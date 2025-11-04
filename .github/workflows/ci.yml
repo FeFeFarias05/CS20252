@@ -7,17 +7,7 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    services:
-      dynamodb:
-        image: amazon/dynamodb-local:latest
-        ports:
-          - 8000:8000
-        options: >-
-          --health-cmd "aws dynamodb list-tables --endpoint-url http://localhost:8000 >/dev/null 2>&1 || exit 1"
-          --health-interval 10s
-          --health-retries 5
-          --health-timeout 5s
-
+  
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
