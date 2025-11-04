@@ -15,7 +15,6 @@ services:
     command: npm run start
   
   mock-jwks:
-    build:
     image: node:18
     volumes:
       - ./tests/mock-jwks-server.ts:/app/mock-jwks-server.ts
