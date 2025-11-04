@@ -31,11 +31,13 @@ jobs:
 
       - name: 🛠️ Build da imagem Docker
         run: |
-          docker build -t cs2025af .
+          docker build -t cs2025af:${{ github.sha }} -t cs2025af:latest .
 
       - name: 🏷️ Tag e Push para ECR
         run: |
+          docker tag cs2025af:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:${{ github.sha }}
           docker tag cs2025af:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:${{ github.sha }}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
 
       - name: 🚀 Conectar via SSH na EC2 e atualizar container
@@ -55,14 +57,17 @@ jobs:
             docker stop cs2025-container || true
             docker rm cs2025-container || true
 
-            # Puxar nova imagem
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+            # Puxar imagem da versão atual (tag do commit)
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:${{ github.sha }}
 
             # Subir container atualizado
             docker run -d --name cs2025-container -p 3000:3000 \
               -e AWS_REGION=${{ secrets.AWS_REGION }} \
               -e DYNAMODB_TABLE_NAME=${{ secrets.DYNAMODB_TABLE_NAME }} \
               -e NODE_ENV=production \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:latest
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cs2025af:${{ github.sha }}
 
             echo "✅ Deploy concluído com sucesso!"
+            echo "🔗 Link de login Cognito:"
+            echo "https://${{ secrets.COGNITO_DOMAIN }}.auth.${{ secrets.AWS_REGION }}.amazoncognito.com/login?client_id=${{ secrets.COGNITO_CLIENT_ID }}&response_type=code&scope=openid&redirect_uri=${{ secrets.COGNITO_CALLBACK_URL }}"
+

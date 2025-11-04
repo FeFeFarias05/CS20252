@@ -33,3 +33,6 @@ jobs:
 
       - name: Terraform Apply
         run: terraform -chdir=infra apply -auto-approve
+
+      - name: 📎 Exibir link Cognito
+        run: terraform -chdir=infra output -raw cognito_login_url
