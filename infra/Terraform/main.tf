@@ -1,6 +1,7 @@
-# CS20252 - Infraestrutura AWS com Cognito
+#############################################
+# REDE E SEGURANÇA (da primeira versão)
+#############################################
 
-# REDE E SEGURANÇA
 data "aws_vpc" "default" {
   default = true
 }
@@ -38,22 +39,25 @@ resource "aws_security_group" "allow_http" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "allow_http"
-  }
+  tags = { Name = "allow_http" }
 }
 
-# --- ECR Repository ---
+#############################################
+# ECR (da primeira versão)
+#############################################
+
 resource "aws_ecr_repository" "repository" {
-  name         = "cs2025af"
-  force_delete = true   # Permite excluir mesmo se tiver imagens
+  name         = var.ecr_repo_name
+  force_delete = true
 }
 
+#############################################
+# EC2 + Docker (da primeira versão)
+#############################################
 
-# EC2 INSTANCE - Servidor da Aplicação
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"]
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
@@ -66,32 +70,35 @@ resource "aws_instance" "app_instance" {
   instance_type          = "t2.micro"
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.allow_http.id]
-  iam_instance_profile   = "LabInstanceProfile"
+  iam_instance_profile   = "LabInstanceProfile" # mantém como na 1ª versão
 
   user_data = <<-EOF
-#!/bin/bash
-set -e
+    #!/bin/bash
+    set -e
 
-sudo apt update -y
-sudo apt install -y docker.io
-sudo systemctl enable docker
-sudo systemctl start docker
+    apt update -y
+    apt install -y docker.io
+    systemctl enable docker
+    systemctl start docker
 
-sudo docker pull fernetest/cs20252:latest
+    # Imagem Docker (mantendo a da 1ª versão; pipeline pode publicar no ECR futuramente)
+    docker pull fernetest/cs20252:latest
 
-sudo docker run -d -p 3000:3000 \
-  -e AWS_REGION=${var.aws_region} \
-  -e DYNAMODB_TABLE_NAME=${var.table_name} \
-  -e NODE_ENV=production \
-  fernetest/cs20252:latest
-EOF
+    # Sobe o container
+    docker run -d -p 3000:3000 \
+      -e AWS_REGION=${var.aws_region} \
+      -e DYNAMODB_TABLE_NAME=${var.table_name} \
+      -e NODE_ENV=production \
+      fernetest/cs20252:latest
+  EOF
 
-  tags = {
-    Name = "cs20252AF"
-  }
+  tags = { Name = "cs20252AF" }
 }
 
-# DYNAMODB E S3
+#############################################
+# DYNAMODB e S3 (da primeira versão)
+#############################################
+
 resource "aws_dynamodb_table" "client_table" {
   name         = var.table_name
   billing_mode = "PAY_PER_REQUEST"
@@ -103,22 +110,20 @@ resource "aws_dynamodb_table" "client_table" {
     type = "S"
   }
 
-  tags = {
-    Name = var.table_name
-  }
+  tags = { Name = var.table_name }
 }
 
 resource "aws_s3_bucket" "example_bucket" {
   bucket = var.bucket_name
 
-  tags = {
-    Name = var.bucket_name
-  }
+  tags = { Name = var.bucket_name }
 }
 
-# COGNITO - AUTENTICAÇÃO E AUTORIZAÇÃO
+#############################################
+# COGNITO (da segunda versão - básico + client moderno)
+#############################################
 
-# USER POOL
+# USER POOL (básico)
 resource "aws_cognito_user_pool" "users" {
   name = "cs20252-user-pool"
 
@@ -132,12 +137,10 @@ resource "aws_cognito_user_pool" "users" {
 
   auto_verified_attributes = ["email"]
 
-  tags = {
-    Name = "cs20252-user-pool"
-  }
+  tags = { Name = "cs20252-user-pool" }
 }
 
-# RESOURCE SERVER
+# RESOURCE SERVER (escopos read/write)
 resource "aws_cognito_resource_server" "api" {
   identifier   = "https://api.cs20252"
   name         = "CS20252 API"
@@ -154,23 +157,42 @@ resource "aws_cognito_resource_server" "api" {
   }
 }
 
-# APP CLIENT
+# USER POOL CLIENT (Authorization Code Flow, Hosted UI)
 resource "aws_cognito_user_pool_client" "app_client" {
   name         = "cs20252-app-client"
   user_pool_id = aws_cognito_user_pool.users.id
 
-  generate_secret = true
+  generate_secret                      = false
   allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_flows = ["client_credentials"]
+  allowed_oauth_flows                  = ["code"]
 
   allowed_oauth_scopes = [
+    "openid",
+    "email",
+    "profile",
+    "aws.cognito.signin.user.admin",
     "${aws_cognito_resource_server.api.identifier}/read",
     "${aws_cognito_resource_server.api.identifier}/write"
   ]
+
+  explicit_auth_flows = [
+    "ALLOW_USER_SRP_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH"
+  ]
+
+  supported_identity_providers = ["COGNITO"]
+
+  callback_urls = var.cognito_callback_urls
+  logout_urls   = var.cognito_logout_urls
 }
 
+# USER POOL DOMAIN (Hosted UI)
+resource "aws_cognito_user_pool_domain" "main" {
+  domain       = var.cognito_domain_prefix
+  user_pool_id = aws_cognito_user_pool.users.id
+}
 
-# ADMIN USER
+# ADMIN USER (igual às versões; opcionalmente pode remover)
 resource "aws_cognito_user" "admin_user" {
   user_pool_id       = aws_cognito_user_pool.users.id
   username           = "admin@example.com"
@@ -181,7 +203,31 @@ resource "aws_cognito_user" "admin_user" {
   }
 }
 
-# OUTPUTS
+#############################################
+# LOCALS e GERAÇÃO DE .env (da segunda versão)
+#############################################
+
+locals {
+  jwt_issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}"
+  jwt_audience = aws_cognito_resource_server.api.identifier
+  jwks_uri     = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}/.well-known/jwks.json"
+}
+
+resource "local_file" "env_file" {
+  filename = "${path.module}/.env"
+content = <<EOF
+AWS_REGION=${var.aws_region}
+AWS_ACCESS_KEY_ID=${var.aws_access_key_id}
+AWS_SECRET_ACCESS_KEY=${var.aws_secret_access_key}
+DYNAMODB_TABLE_NAME=${var.table_name}
+JWT_ISSUER=${local.jwt_issuer}
+JWT_AUDIENCE=${local.jwt_audience}
+JWKS_URI=${local.jwks_uri}
+EOF
+
+}
+
+
 output "ec2_public_ip" {
   value = aws_instance.app_instance.public_ip
 }
@@ -199,13 +245,13 @@ output "user_pool_client_id" {
 }
 
 output "jwt_issuer" {
-  value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}"
+  value = local.jwt_issuer
 }
 
 output "jwks_uri" {
-  value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}/.well-known/jwks.json"
+  value = local.jwks_uri
 }
 
 output "jwt_audience" {
-  value = aws_cognito_resource_server.api.identifier
+  value = local.jwt_audience
 }
