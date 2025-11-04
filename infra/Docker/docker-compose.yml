@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: ../../
+      dockerfile: infra/Docker/Dockerfile
     image: cs20252:latest
     environment:
       AWS_REGION: ${AWS_REGION:-us-east-1}
