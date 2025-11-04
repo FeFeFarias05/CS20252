@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 20
 
-      - run: docker compose up
+      - run: docker compose -f infra/Docker/docker-compose.yml up -d
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
