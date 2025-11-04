@@ -13,19 +13,20 @@ jobs:
         ports:
           - '8000:8000'
         options: >-
-          --health-cmd "curl -f http://localhost:8000/shell/ || exit 1"
+          --health-cmd "curl -f http://localhost:8000/ || exit 1"
           --health-interval 5s
           --health-retries 10
           --health-timeout 5s
 
     env:
-      DATABASE_URL: ""
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
       JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
       JWKS_URI: ${{ secrets.JWKS_URI }}
       NODE_ENV: test
+      TABLE_NAME: Client   # (se teu app espera)
+      AWS_REGION: us-east-1          # ✅ se teu código usa
 
     steps:
       - uses: actions/checkout@v4
