@@ -105,8 +105,7 @@ EOF
 resource "aws_dynamodb_table" "client_table" {
   name         = var.table_name
   billing_mode = "PAY_PER_REQUEST"
-
-  hash_key = "clientId"
+  hash_key     = "clientId"
 
   attribute {
     name = "clientId"
@@ -177,10 +176,9 @@ resource "aws_cognito_user_pool_client" "app_client" {
   name         = "cs20252-app-client"
   user_pool_id = aws_cognito_user_pool.users.id
 
-  generate_secret                     = false
+  generate_secret                      = false
   allowed_oauth_flows_user_pool_client = true
-
-  allowed_oauth_flows = ["code"]
+  allowed_oauth_flows                   = ["code"]
 
   allowed_oauth_scopes = [
     "openid",
@@ -226,6 +224,27 @@ resource "aws_cognito_user" "admin_user" {
   }
 }
 
+# LOCALS PARA .env
+locals {
+  jwt_issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}"
+  jwt_audience = aws_cognito_resource_server.api.identifier
+  jwks_uri     = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}/.well-known/jwks.json"
+}
+
+# ARQUIVO .env AUTOMÁTICO
+resource "local_file" "env_file" {
+  filename = "${path.module}/.env"
+  content  = templatefile("${path.module}/env.tpl", {
+    aws_region            = var.aws_region
+    aws_access_key_id     = var.aws_access_key_id
+    aws_secret_access_key = var.aws_secret_access_key
+    dynamodb_table_name   = var.table_name
+    jwt_issuer            = local.jwt_issuer
+    jwt_audience          = local.jwt_audience
+    jwks_uri              = local.jwks_uri
+  })
+}
+
 # OUTPUTS
 output "ec2_public_ip" {
   value = aws_instance.app_instance.public_ip
@@ -244,13 +263,13 @@ output "user_pool_client_id" {
 }
 
 output "jwt_issuer" {
-  value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}"
+  value = local.jwt_issuer
 }
 
 output "jwks_uri" {
-  value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}/.well-known/jwks.json"
+  value = local.jwks_uri
 }
 
 output "jwt_audience" {
-  value = aws_cognito_resource_server.api.identifier
+  value = local.jwt_audience
 }
