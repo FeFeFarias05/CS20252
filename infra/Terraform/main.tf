@@ -68,6 +68,24 @@ resource "aws_instance" "app_instance" {
   vpc_security_group_ids = [aws_security_group.allow_http.id]
   iam_instance_profile   = "LabInstanceProfile"
 
+  user_data = <<-EOF
+#!/bin/bash
+set -e
+
+sudo apt update -y
+sudo apt install -y docker.io
+sudo systemctl enable docker
+sudo systemctl start docker
+
+sudo docker pull fernetest/cs20252:latest
+
+sudo docker run -d -p 3000:3000 \
+  -e AWS_REGION=${var.aws_region} \
+  -e DYNAMODB_TABLE_NAME=${var.table_name} \
+  -e NODE_ENV=production \
+  fernetest/cs20252:latest
+EOF
+
   tags = {
     Name = "cs20252AF"
   }
