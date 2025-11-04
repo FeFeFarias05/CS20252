@@ -33,7 +33,6 @@ services:
       - JWT_AUDIENCE=test-aud
 
   dynamodb:
-    build:
     image: amazon/dynamodb-local:latest
     ports:
       - 8000:8000
