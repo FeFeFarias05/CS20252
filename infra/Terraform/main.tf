@@ -180,11 +180,12 @@ resource "aws_cognito_user_pool_client" "app_client" {
   generate_secret                     = false
   allowed_oauth_flows_user_pool_client = true
 
-  allowed_oauth_flows = ["client_credentials"]
+  allowed_oauth_flows = ["code"]
 
   allowed_oauth_scopes = [
     "openid",
     "email",
+    "profile",
     "aws.cognito.signin.user.admin",
     "${aws_cognito_resource_server.api.identifier}/read",
     "${aws_cognito_resource_server.api.identifier}/write"
@@ -196,6 +197,22 @@ resource "aws_cognito_user_pool_client" "app_client" {
   ]
 
   supported_identity_providers = ["COGNITO"]
+
+  callback_urls = [
+    "http://localhost:3000/callback",
+    "https://meuapp.com/callback"
+  ]
+
+  logout_urls = [
+    "http://localhost:3000/logout",
+    "https://meuapp.com/logout"
+  ]
+}
+
+# USER POOL DOMAIN (para Hosted UI)
+resource "aws_cognito_user_pool_domain" "main" {
+  domain       = "cs20252-auth"
+  user_pool_id = aws_cognito_user_pool.users.id
 }
 
 # ADMIN USER
