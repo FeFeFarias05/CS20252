@@ -1,6 +1,3 @@
-#############################################
-# REDE E SEGURANÇA (da primeira versão)
-#############################################
 
 data "aws_vpc" "default" {
   default = true
@@ -42,18 +39,12 @@ resource "aws_security_group" "allow_http" {
   tags = { Name = "allow_http" }
 }
 
-#############################################
-# ECR (da primeira versão)
-#############################################
 
 resource "aws_ecr_repository" "repository" {
   name         = var.ecr_repo_name
   force_delete = true
 }
 
-#############################################
-# EC2 + Docker (da primeira versão)
-#############################################
 
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -81,7 +72,6 @@ resource "aws_instance" "app_instance" {
     systemctl enable docker
     systemctl start docker
 
-    # Imagem Docker (mantendo a da 1ª versão; pipeline pode publicar no ECR futuramente)
     docker pull fernetest/cs20252:latest
 
     # Sobe o container
@@ -95,9 +85,6 @@ resource "aws_instance" "app_instance" {
   tags = { Name = "cs20252AF" }
 }
 
-#############################################
-# DYNAMODB e S3 (da primeira versão)
-#############################################
 
 resource "aws_dynamodb_table" "client_table" {
   name         = var.table_name
@@ -119,11 +106,7 @@ resource "aws_s3_bucket" "example_bucket" {
   tags = { Name = var.bucket_name }
 }
 
-#############################################
-# COGNITO (da segunda versão - básico + client moderno)
-#############################################
 
-# USER POOL (básico)
 resource "aws_cognito_user_pool" "users" {
   name = "cs20252-user-pool"
 
@@ -140,7 +123,6 @@ resource "aws_cognito_user_pool" "users" {
   tags = { Name = "cs20252-user-pool" }
 }
 
-# RESOURCE SERVER (escopos read/write)
 resource "aws_cognito_resource_server" "api" {
   identifier   = "https://api.cs20252"
   name         = "CS20252 API"
@@ -157,7 +139,6 @@ resource "aws_cognito_resource_server" "api" {
   }
 }
 
-# USER POOL CLIENT (Authorization Code Flow, Hosted UI)
 resource "aws_cognito_user_pool_client" "app_client" {
   name         = "cs20252-app-client"
   user_pool_id = aws_cognito_user_pool.users.id
@@ -186,13 +167,11 @@ resource "aws_cognito_user_pool_client" "app_client" {
   logout_urls   = var.cognito_logout_urls
 }
 
-# USER POOL DOMAIN (Hosted UI)
 resource "aws_cognito_user_pool_domain" "main" {
   domain       = var.cognito_domain_prefix
   user_pool_id = aws_cognito_user_pool.users.id
 }
 
-# ADMIN USER (igual às versões; opcionalmente pode remover)
 resource "aws_cognito_user" "admin_user" {
   user_pool_id       = aws_cognito_user_pool.users.id
   username           = "admin@example.com"
@@ -203,9 +182,7 @@ resource "aws_cognito_user" "admin_user" {
   }
 }
 
-#############################################
-# LOCALS e GERAÇÃO DE .env (da segunda versão)
-#############################################
+
 
 locals {
   jwt_issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.users.id}"
