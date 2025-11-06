@@ -9,7 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "cross-env NODE_ENV=test jest --runInBand",
-    "docs:build": "ts-node src/lib/swagger.ts"
+  "docs:build": "node scripts/generate-swagger.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.902.0",
