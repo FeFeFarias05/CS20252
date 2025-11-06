@@ -15,7 +15,7 @@ jobs:
       JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
       JWKS_URI: ${{ secrets.JWKS_URI }}
       NODE_ENV: test
-      TABLE_NAME: Client
+      DYNAMODB_TABLE_NAME: Client
       AWS_REGION: us-east-1
 
     steps:
@@ -44,3 +44,6 @@ jobs:
         with:
           name: openapi-docs
           path: docs/
+
+
+          
