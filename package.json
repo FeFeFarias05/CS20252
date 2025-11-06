@@ -14,6 +14,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.902.0",
     "@aws-sdk/lib-dynamodb": "^3.902.0",
+    "dotenv": "^17.2.3",
     "jose": "^6.1.0",
     "next": "14.0.4",
     "node-fetch": "^3.3.2",
