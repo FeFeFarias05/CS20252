@@ -26,7 +26,6 @@ const config: Config = {
   },
 
   setupFiles: ['dotenv/config'],
-  setupFilesAfterEnv: ['<rootDir>/src/setup-tests.ts'],
 };
 
 export default config;
