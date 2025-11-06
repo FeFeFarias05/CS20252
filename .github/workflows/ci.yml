@@ -7,7 +7,7 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-  
+
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -15,32 +15,36 @@ jobs:
       JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
       JWKS_URI: ${{ secrets.JWKS_URI }}
       NODE_ENV: test
-      TABLE_NAME: Client
       AWS_REGION: us-east-1
+      DYNAMODB_TABLE_NAME: Client   # ✅ nome correto da variável
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - run: docker compose -f infra/Docker/docker-compose.yml up -d
+      # ✅ Sobe DynamoDB Local usando docker-compose
+      - name: Start DynamoDB Local
+        run: docker compose -f infra/Docker/docker-compose.yml up -d
+
       - run: npm install
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
-      - run: npm test
+
+      # ✅ Executa testes
+      - run: npm test -- --detectOpenHandles
+
       - run: npm run test:coverage
 
+      # ✅ Salva relatório da cobertura
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage
 
+      # ✅ Gera OpenAPI se buildar
       - name: Generate OpenAPI docs
         run: npm run docs:build
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: openapi-docs
-          path: docs/
