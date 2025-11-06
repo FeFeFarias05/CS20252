@@ -1,23 +1,27 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { 
-  DynamoDBDocumentClient, 
-  ScanCommand, 
-  PutCommand, 
-  GetCommand, 
+import {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  PutCommand,
+  GetCommand,
   DeleteCommand,
-  UpdateCommand
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import crypto from "node:crypto";
 
-const client = new DynamoDBClient({ 
+const isTest = process.env.NODE_ENV === "test";
+
+const client = new DynamoDBClient({
   region: process.env.AWS_REGION || "us-east-1",
- 
-  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
-  } : {})
+  endpoint: process.env.DYNAMODB_ENDPOINT || (isTest ? "http://localhost:8000" : undefined),
+  credentials: process.env.AWS_ACCESS_KEY_ID
+    ? {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      }
+    : undefined,
 });
+
 
 const dynamodb = DynamoDBDocumentClient.from(client);
 
@@ -33,98 +37,74 @@ export interface Client {
 
 export class DynamoDBService {
   async getAllClients(): Promise<Client[]> {
-    try {
-      const command = new ScanCommand({
-        TableName: TABLE_NAME,
-      });
-      
-      const response = await dynamodb.send(command);
-      return response.Items as Client[] || [];
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      throw error;
-    }
+    const command = new ScanCommand({ TableName: TABLE_NAME });
+    const response = await dynamodb.send(command);
+    return (response.Items as Client[]) || [];
   }
 
+  async createClient(
+    client: Omit<Client, "clientId" | "createdAt">
+  ): Promise<Client> {
+    const newClient: Client = {
+      clientId: crypto.randomUUID(),
+      ...client,
+      createdAt: new Date().toISOString(),
+    };
 
-  async createClient(client: Omit<Client, 'clientId' | 'createdAt'>): Promise<Client> {
-    try {
-      const newClient: Client = {
-        clientId: crypto.randomUUID(),
-        ...client,
-        createdAt: new Date().toISOString(),
-      };
+    const command = new PutCommand({
+      TableName: TABLE_NAME,
+      Item: newClient,
+    });
 
-      const command = new PutCommand({
-        TableName: TABLE_NAME,
-        Item: newClient,
-      });
-
-      await dynamodb.send(command);
-      return newClient;
-    } catch (error) {
-      console.error("Error creating client:", error);
-      throw error;
-    }
+    await dynamodb.send(command);
+    return newClient;
   }
 
   async getClientById(clientId: string): Promise<Client | null> {
-    try {
-      const command = new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { clientId },
-      });
+    const command = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { clientId },
+    });
 
-      const response = await dynamodb.send(command);
-      return response.Item as Client || null;
-    } catch (error) {
-      console.error("Error fetching client by ID:", error);
-      throw error;
-    }
+    const response = await dynamodb.send(command);
+    return (response.Item as Client) || null;
   }
 
-  async updateClient(clientId: string, updates: Partial<Omit<Client, 'clientId' | 'createdAt'>>): Promise<Client | null> {
-    try {
-      const updateExpression = [];
-      const expressionAttributeValues: any = {};
-      const expressionAttributeNames: any = {};
+  async updateClient(
+    clientId: string,
+    updates: Partial<Omit<Client, "clientId" | "createdAt">>
+  ): Promise<Client | null> {
+    const updateExpression = [];
+    const attributeValues: any = {};
+    const attributeNames: any = {};
 
-      for (const [key, value] of Object.entries(updates)) {
-        updateExpression.push(`#${key} = :${key}`);
-        expressionAttributeNames[`#${key}`] = key;
-        expressionAttributeValues[`:${key}`] = value;
-      }
-
-      const command = new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { clientId },
-        UpdateExpression: `SET ${updateExpression.join(', ')}`,
-        ExpressionAttributeNames: expressionAttributeNames,
-        ExpressionAttributeValues: expressionAttributeValues,
-        ReturnValues: "ALL_NEW",
-      });
-
-      const response = await dynamodb.send(command);
-      return response.Attributes as Client || null;
-    } catch (error) {
-      console.error("Error updating client:", error);
-      throw error;
+    for (const [key, value] of Object.entries(updates)) {
+      updateExpression.push(`#${key} = :${key}`);
+      attributeNames[`#${key}`] = key;
+      attributeValues[`:${key}`] = value;
     }
+
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { clientId },
+      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      ExpressionAttributeNames: attributeNames,
+      ExpressionAttributeValues: attributeValues,
+      ReturnValues: "ALL_NEW",
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Attributes as Client) || null;
   }
 
   async deleteClient(clientId: string): Promise<boolean> {
-    try {
-      const command = new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: { clientId },
-      });
+    const command = new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { clientId },
+    });
 
-      await dynamodb.send(command);
-      return true;
-    } catch (error) {
-      console.error("Error deleting client:", error);
-      throw error;
-    }
+    await dynamodb.send(command);
+    return true;
   }
 }
 

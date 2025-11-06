@@ -1,5 +1,10 @@
 import request from 'supertest';
-import fetch from 'node-fetch';
+import type { RequestInfo, RequestInit } from 'node-fetch';
+import fetchFn from 'node-fetch';
+
+const fetch = (...args: [RequestInfo, RequestInit?]) => {
+  return fetchFn(...args);
+};
 
 const API_BASE = process.env.TEST_API_BASE ?? 'http://localhost:3000';
 
