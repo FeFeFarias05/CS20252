@@ -16,7 +16,8 @@ jobs:
       JWKS_URI: ${{ secrets.JWKS_URI }}
       NODE_ENV: test
       AWS_REGION: us-east-1
-      DYNAMODB_TABLE_NAME: Client   # ✅ nome correto da variável
+      DYNAMODB_TABLE_NAME: Client
+      DYNAMODB_ENDPOINT: http://localhost:8000
 
     steps:
       - uses: actions/checkout@v4

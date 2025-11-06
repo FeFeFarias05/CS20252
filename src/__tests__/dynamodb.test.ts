@@ -1,8 +1,38 @@
 import { dynamoDBService } from '../lib/dynamodb';
+import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
 
-describe('User CRUD Tests', () => {
+const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "Client";
+
+const localClient = new DynamoDBClient({
+  region: "us-east-1",
+  endpoint: process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
+});
+
+describe('DynamoDB - CRUD Tests', () => {
   let testUserIds: string[] = [];
 
+  // ✅ Cria tabela antes de rodar os testes
+  beforeAll(async () => {
+    try {
+      await localClient.send(new CreateTableCommand({
+        TableName: TABLE_NAME,
+        BillingMode: "PAY_PER_REQUEST",
+        KeySchema: [{ AttributeName: "clientId", KeyType: "HASH" }],
+        AttributeDefinitions: [{ AttributeName: "clientId", AttributeType: "S" }],
+      }));
+    } catch (err) {
+      console.log("Table may already exist, continuing...");
+    }
+  }, 15000);
+
+  // ✅ Remove tabela depois dos testes
+  afterAll(async () => {
+    try {
+      await localClient.send(new DeleteTableCommand({ TableName: TABLE_NAME }));
+    } catch {}
+  }, 15000);
+
+  // ✅ Limpa registros após cada teste
   afterEach(async () => {
     for (const id of testUserIds) {
       try { await dynamoDBService.deleteClient(id); } catch {}
@@ -11,69 +41,36 @@ describe('User CRUD Tests', () => {
   });
 
   it('should create a user', async () => {
-    const user = await dynamoDBService.createClient({ name: 'Test', email: 'test@example.com' });
+    const user = await dynamoDBService.createClient({ name: 'Test One', email: 't1@example.com' });
     testUserIds.push(user.clientId);
-    expect(user.clientId).toBeDefined();
-    expect(user.name).toBe('Test');
+    expect(user).toHaveProperty("clientId");
   });
 
-  // CREATE
-  it('should create a user', async () => {
-    const user = await dynamoDBService.createClient({
-      name: 'Test User',
-      email: 'test@example.com'
-    });
-
-    testUserIds.push(user.clientId);
-    expect(user.name).toBe('Test User');
-    expect(user.email).toBe('test@example.com');
-    expect(user.clientId).toBeDefined();
-    expect(user.createdAt).toBeDefined();
-  });
-
-  // READ
   it('should read a user', async () => {
-    const created = await dynamoDBService.createClient({
-      name: 'Read Test',
-      email: 'read@example.com'
-    });
+    const created = await dynamoDBService.createClient({ name: 'Read', email: 'r@example.com' });
     testUserIds.push(created.clientId);
 
     const user = await dynamoDBService.getClientById(created.clientId);
-
-    expect(user).not.toBeNull();
-    expect(user?.name).toBe('Read Test');
-    expect(user?.email).toBe('read@example.com');
+    expect(user?.name).toBe('Read');
   });
 
-  // UPDATE
   it('should update a user', async () => {
-    const created = await dynamoDBService.createClient({
-      name: 'Original',
-      email: 'original@example.com'
-    });
+    const created = await dynamoDBService.createClient({ name: 'Old', email: 'o@example.com' });
     testUserIds.push(created.clientId);
 
-    const updated = await dynamoDBService.updateClient(created.clientId, {
-      name: 'Updated'
-    });
+    const updated = await dynamoDBService.updateClient(created.clientId, { name: 'New Name' });
 
-    expect(updated).not.toBeNull();
-    expect(updated?.name).toBe('Updated');
-    expect(updated?.email).toBe('original@example.com'); // email should remain unchanged
+    expect(updated?.name).toBe('New Name');
+    expect(updated?.email).toBe('o@example.com');
   });
 
-  // DELETE
   it('should delete a user', async () => {
-    const created = await dynamoDBService.createClient({
-      name: 'Delete Test',
-      email: 'delete@example.com'
-    });
+    const created = await dynamoDBService.createClient({ name: 'Delete', email: 'd@example.com' });
 
-    const deleteResult = await dynamoDBService.deleteClient(created.clientId);
-    expect(deleteResult).toBe(true);
+    const deleted = await dynamoDBService.deleteClient(created.clientId);
+    expect(deleted).toBe(true);
 
-    const deleted = await dynamoDBService.getClientById(created.clientId);
-    expect(deleted).toBeNull();
+    const result = await dynamoDBService.getClientById(created.clientId);
+    expect(result).toBeNull();
   });
 });

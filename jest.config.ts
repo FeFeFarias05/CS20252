@@ -2,22 +2,31 @@ import type { Config } from 'jest';
 
 const config: Config = {
   testEnvironment: 'node',
+  preset: 'ts-jest/presets/default-esm', // ✅ importante para TypeScript + ESM
 
-  // Transpila arquivos .ts / .tsx
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+    '^.+\\.(ts|tsx)$': ['ts-jest', { 
+      tsconfig: 'tsconfig.json',
+      useESM: true 
+    }],
   },
 
-  // Permitir transformar pacotes ESM como jose e node-fetch
+  // ✅ Permite transformar jose e node-fetch (são ESM)
   transformIgnorePatterns: [
-    'node_modules/(?!(jose|node-fetch)/)',
+    'node_modules/(?!jose|node-fetch)'
   ],
 
-  // Carregar variáveis do .env nos testes
-  setupFiles: ['dotenv/config'],
+  // ✅ Resolve imports ESM (.js, .ts)
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
 
-  // Encontrar arquivos de teste
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  // ✅ Corrige mapeamento de import com caminho relativo
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
+
+  setupFiles: ['dotenv/config'],
+  setupFilesAfterEnv: ['<rootDir>/src/setup-tests.ts'],
 };
 
 export default config;
