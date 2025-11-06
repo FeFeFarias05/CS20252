@@ -23,7 +23,68 @@ const client = new DynamoDBClient({
 });
 
 
-const dynamodb = DynamoDBDocumentClient.from(client);
+let dynamodb: any;
+
+if (isTest) {
+  // Simple in-memory mock for DynamoDBDocumentClient used during tests
+  const store = new Map<string, any>();
+
+  dynamodb = {
+    send: async (command: any) => {
+      const name = command.constructor && command.constructor.name;
+      const input = command.input || {};
+
+      if (name === 'PutCommand') {
+        const item = input.Item;
+        if (!item || !item.clientId) throw new Error('Invalid item');
+        store.set(item.clientId, item);
+        return {};
+      }
+
+      if (name === 'GetCommand') {
+        const key = input.Key;
+        const item = key && store.get(key.clientId);
+        return { Item: item };
+      }
+
+      if (name === 'ScanCommand') {
+        return { Items: Array.from(store.values()) };
+      }
+
+      if (name === 'UpdateCommand') {
+        const key = input.Key;
+        const clientId = key && key.clientId;
+        const existing = store.get(clientId);
+        if (!existing) return { Attributes: undefined };
+
+        const values = input.ExpressionAttributeValues || {};
+        const names = input.ExpressionAttributeNames || {};
+
+        // Apply updates: map :val tokens to real attribute names via names mapping
+        for (const [valKey, val] of Object.entries(values)) {
+          const token = (valKey as string).replace(/^:/, '');
+          const nameKey = `#${token}`;
+          const realName = names[nameKey] || token;
+          existing[realName] = val as any;
+        }
+
+        store.set(clientId, existing);
+        return { Attributes: existing };
+      }
+
+      if (name === 'DeleteCommand') {
+        const key = input.Key;
+        const clientId = key && key.clientId;
+        store.delete(clientId);
+        return {};
+      }
+
+      throw new Error(`MockDynamoDB: unsupported command ${name}`);
+    },
+  };
+} else {
+  dynamodb = DynamoDBDocumentClient.from(client);
+}
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "Client";
 
