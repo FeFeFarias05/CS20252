@@ -28,7 +28,6 @@ const options = {
 
 export const swaggerSpec = swaggerJSDoc(options);
 
-// If invoked as a script (npm run docs:build), write spec files to docs/
 const lifecycle = process.env.npm_lifecycle_event;
 if (lifecycle === 'docs:build' || require.main === module) {
   try {

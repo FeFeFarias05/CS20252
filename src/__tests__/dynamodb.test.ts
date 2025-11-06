@@ -12,7 +12,6 @@ describe('DynamoDB - CRUD Tests', () => {
   let testUserIds: string[] = [];
 
   beforeAll(async () => {
-    // If running under Jest tests we use the in-memory mock in src/lib/dynamodb.ts
     if (process.env.NODE_ENV === 'test') return;
 
     try {
@@ -22,10 +21,10 @@ describe('DynamoDB - CRUD Tests', () => {
         KeySchema: [{ AttributeName: "clientId", KeyType: "HASH" }],
         AttributeDefinitions: [{ AttributeName: "clientId", AttributeType: "S" }],
       }));
-      await new Promise(res => setTimeout(res, 2000)); // Aguarda tabela ficar ativa
+      await new Promise(res => setTimeout(res, 2000)); 
     } catch (err) {
       console.error('Error creating local DynamoDB table in beforeAll:', err);
-      throw err; // fail fast so test logs the real error (e.g. connection refused)
+      throw err; 
     }
   }, 30000);
 

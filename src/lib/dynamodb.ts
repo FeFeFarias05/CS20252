@@ -26,7 +26,6 @@ const client = new DynamoDBClient({
 let dynamodb: any;
 
 if (isTest) {
-  // Simple in-memory mock for DynamoDBDocumentClient used during tests
   const store = new Map<string, any>();
 
   dynamodb = {

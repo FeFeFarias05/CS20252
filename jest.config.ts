@@ -12,11 +12,9 @@ const config: Config = {
         tsconfig: 'tsconfig.json',
       },
     ],
-    // ✅ Transforma JS de node_modules (como jose)
     '^.+\\.(js)$': 'babel-jest',
   },
 
-  // ✅ Agora removemos jose/node-fetch do ignore
   transformIgnorePatterns: [
     '/node_modules/(?!jose|node-fetch)/',
   ],
