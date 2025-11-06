@@ -10,8 +10,7 @@ import {
 
 const client = new DynamoDBClient({ 
   region: process.env.AWS_REGION || "us-east-1",
-  // Se as credenciais estiverem definidas no .env, use-as; caso contrário, o SDK da AWS
-  // buscará automaticamente as credenciais do arquivo ~/.aws/credentials
+ 
   ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,

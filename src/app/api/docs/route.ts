@@ -1,10 +1,7 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+// src/app/api/docs/route.ts
+import { NextResponse } from 'next/server';
 import { swaggerSpec } from '@/lib/swagger';
-import swaggerUi from 'swagger-ui-express';
-import express from 'express';
 
-const app = express();
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-export default app;
+export async function GET() {
+  return NextResponse.json(swaggerSpec);
+}
