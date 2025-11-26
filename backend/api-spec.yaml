@@ -1,0 +1,377 @@
+openapi: 3.0.3
+info:
+  title: Pets API
+  description: API para gerenciamento de pets - Sistema de Agenda de Pets
+  version: 1.0.0
+  contact:
+    name: Construção de Software PUCRS
+    email: contato@exemplo.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de desenvolvimento local
+  - url: https://seu-app.herokuapp.com/api
+    description: Servidor de produção
+
+paths:
+  /pets:
+    get:
+      summary: Listar todos os pets
+      description: Retorna uma lista de todos os pets ordenados por data de criação (mais recentes primeiro)
+      tags:
+        - Pets
+      responses:
+        '200':
+          description: Lista de pets retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+              examples:
+                success:
+                  summary: Exemplo de resposta de sucesso
+                  value:
+                    - petId: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+                      nome: "Rex"
+                      foto: "https://example.com/rex.jpg"
+                      idade: 3
+                      raca: "Labrador"
+                      peso: 25.5
+                      medicacoes: "Antipulgas mensais"
+                      informacoes: "Cachorro muito amigável"
+                      createdAt: "2025-11-26T21:00:17.414Z"
+                      updatedAt: "2025-11-26T21:00:17.414Z"
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                server_error:
+                  summary: Erro do servidor
+                  value:
+                    error: "Failed to fetch pets"
+
+    post:
+      summary: Criar um novo pet
+      description: Adiciona um novo pet ao sistema
+      tags:
+        - Pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePetRequest'
+            examples:
+              valid_pet:
+                summary: Exemplo de pet válido
+                value:
+                  nome: "Mia"
+                  foto: "https://example.com/mia.jpg"
+                  idade: 2
+                  raca: "Siamês"
+                  peso: 4.5
+                  medicacoes: "Vacina anual"
+                  informacoes: "Gata muito calma"
+      responses:
+        '201':
+          description: Pet criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+              examples:
+                created_pet:
+                  summary: Pet criado
+                  value:
+                    petId: "6e9f2a5f-5205-4b96-814f-626477f00a5d"
+                    nome: "Mia"
+                    foto: "https://example.com/mia.jpg"
+                    idade: 2
+                    raca: "Siamês"
+                    peso: 4.5
+                    medicacoes: "Vacina anual"
+                    informacoes: "Gata muito calma"
+                    createdAt: "2025-11-26T21:03:45.123Z"
+                    updatedAt: "2025-11-26T21:03:45.123Z"
+        '400':
+          description: Dados de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_fields:
+                  summary: Campos obrigatórios ausentes
+                  value:
+                    error: "nome, idade, raca e peso são obrigatórios"
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                server_error:
+                  summary: Erro do servidor
+                  value:
+                    error: "internal"
+
+  /pets/{id}:
+    get:
+      summary: Buscar pet por ID
+      description: Retorna um pet específico pelo seu ID
+      tags:
+        - Pets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do pet (UUID)
+          schema:
+            type: string
+            format: uuid
+            example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+      responses:
+        '200':
+          description: Pet encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          description: Pet não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Pet não encontrado
+                  value:
+                    error: "not found"
+
+    put:
+      summary: Atualizar pet
+      description: Atualiza os dados de um pet existente
+      tags:
+        - Pets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do pet (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePetRequest'
+      responses:
+        '200':
+          description: Pet atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Pet não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Deletar pet
+      description: Remove um pet do sistema
+      tags:
+        - Pets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do pet (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pet deletado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '404':
+          description: Pet não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - petId
+        - nome
+        - idade
+        - raca
+        - peso
+        - createdAt
+      properties:
+        petId:
+          type: string
+          format: uuid
+          description: Identificador único do pet
+          example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nome do pet
+          example: "Rex"
+        foto:
+          type: string
+          description: URL da foto do pet
+          example: "https://example.com/rex.jpg"
+        idade:
+          type: number
+          minimum: 0
+          description: Idade do pet em anos
+          example: 3
+        raca:
+          type: string
+          description: Raça do pet
+          example: "Labrador"
+        peso:
+          type: number
+          minimum: 0
+          description: Peso do pet em kg
+          example: 25.5
+        medicacoes:
+          type: string
+          description: Medicações que o pet toma
+          example: "Antipulgas mensais"
+        informacoes:
+          type: string
+          description: Informações adicionais sobre o pet
+          example: "Cachorro muito amigável"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora de criação do registro
+          example: "2025-11-26T21:00:17.414Z"
+
+    CreatePetRequest:
+      type: object
+      required:
+        - nome
+        - idade
+        - raca
+        - peso
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nome do pet
+          example: "Mia"
+        foto:
+          type: string
+          description: URL da foto do pet
+          example: "https://example.com/mia.jpg"
+        idade:
+          type: number
+          minimum: 0
+          description: Idade do pet em anos
+          example: 2
+        raca:
+          type: string
+          description: Raça do pet
+          example: "Siamês"
+        peso:
+          type: number
+          minimum: 0
+          description: Peso do pet em kg
+          example: 4.5
+        medicacoes:
+          type: string
+          description: Medicações que o pet toma
+          example: "Vacina anual"
+        informacoes:
+          type: string
+          description: Informações adicionais sobre o pet
+          example: "Gata muito calma"
+
+    UpdatePetRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nome do pet
+          example: "Rex"
+        foto:
+          type: string
+          description: URL da foto do pet
+          example: "https://example.com/rex-updated.jpg"
+        idade:
+          type: number
+          minimum: 0
+          description: Idade do pet em anos
+          example: 4
+        raca:
+          type: string
+          description: Raça do pet
+          example: "Labrador Retriever"
+        peso:
+          type: number
+          minimum: 0
+          description: Peso do pet em kg
+          example: 27.0
+        medicacoes:
+          type: string
+          description: Medicações que o pet toma
+          example: "Antipulgas e vermífugo"
+        informacoes:
+          type: string
+          description: Informações adicionais sobre o pet
+          example: "Muito amigável e ativo"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Mensagem de erro
+          example: "Invalid input data"
+        details:
+          type: string
+          description: Detalhes adicionais sobre o erro
+          example: "The nome field is required"
+
+tags:
+  - name: Pets
+    description: Operações relacionadas aos pets
+

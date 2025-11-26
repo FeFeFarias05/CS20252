@@ -10,9 +10,9 @@ variable "key_name" {
 }
 
 variable "table_name" {
-  description = "Nome da tabela DynamoDB."
+  description = "Nome da tabela DynamoDB para pets."
   type        = string
-  default     = "clients"
+  default     = "Pet"
 }
 
 variable "bucket_name" {

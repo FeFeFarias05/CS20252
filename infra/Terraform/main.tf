@@ -86,14 +86,14 @@ resource "aws_instance" "app_instance" {
 }
 
 
-resource "aws_dynamodb_table" "client_table" {
+resource "aws_dynamodb_table" "pet_table" {
   name         = var.table_name
   billing_mode = "PAY_PER_REQUEST"
 
-  hash_key = "clientId"
+  hash_key = "petId"
 
   attribute {
-    name = "clientId"
+    name = "petId"
     type = "S"
   }
 
