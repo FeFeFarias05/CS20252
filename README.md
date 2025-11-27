@@ -1,6 +1,8 @@
-# Sprint 0 – API de Usuários com Backend e Frontend
+# Sprint 0 – API de Gerenciamento de Pets com Backend e Frontend
 
 Aplicação completa com backend Express + TypeScript + DynamoDB e frontend Next.js 14, incluindo autenticação JWT (JWKS), autorização RBAC, testes automatizados e infraestrutura como código (Terraform).
+
+**Domínio:** meuspets.com
 
 **Grupo:** Ana Laura de Souza Lopes e Fernanda Farias Uberti
 
@@ -9,14 +11,14 @@ Aplicação completa com backend Express + TypeScript + DynamoDB e frontend Next
 ## 📋 Índice
 
 - [Stack Tecnológica](#-stack-tecnológica)
-- [Arquitetura](#-arquitetura)
 - [Início Rápido](#-início-rápido)
+- [Arquitetura](#-arquitetura)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [API - Endpoints](#-api---endpoints)
 - [Desenvolvimento](#-desenvolvimento)
 - [Testes](#-testes)
 - [Deploy](#-deploy)
-- [Infraestrutura](#-infraestrutura)
+- [Documentação Adicional](#-documentação-adicional)
 
 ---
 
@@ -31,7 +33,7 @@ Aplicação completa com backend Express + TypeScript + DynamoDB e frontend Next
 - **Autorização:** RBAC (Role-Based Access Control)
 - **Validação:** Zod
 - **Testes:** Jest + Supertest
-- **Documentação:** Swagger/OpenAPI
+- **Documentação:** Swagger/OpenAPI 3.0
 
 ### Frontend
 - **Framework:** Next.js 14 (App Router)
@@ -43,7 +45,8 @@ Aplicação completa com backend Express + TypeScript + DynamoDB e frontend Next
 - **IaC:** Terraform
 - **Containers:** Docker + Docker Compose
 - **CI/CD:** GitHub Actions
-- **Cloud:** AWS (DynamoDB, Cognito, EC2, S3, VPC)
+- **Cloud:** AWS (ECR, DynamoDB, Cognito, EC2, API Gateway, Route53)
+- **Domínio:** meuspets.com
 
 ---
 
@@ -792,29 +795,106 @@ Para começar rapidamente, veja o **[QUICKSTART.md](./QUICKSTART.md)** que cont�
 
 ---
 
-## 📖 Documentação Adicional
+## 🚀 Deploy em Produção
 
-- **Backend**: Veja [backend/README.md](./backend/README.md) para detalhes da API
-- **Frontend**: Veja [frontend/README.md](./frontend/README.md) para desenvolvimento do frontend
-- **Infraestrutura**: Veja [infra/](./infra/) para configurações de Terraform e Docker
+### Domínio e URLs
+
+**Domínio Principal:** `meuspets.com`
+
+- **Frontend:** `https://meuspets.com`
+- **Backend API:** `https://meuspets.com/api/v1`
+- **Swagger Docs:** `https://meuspets.com/api/v1/docs`
+- **Health Check:** `https://meuspets.com/api/v1/health`
+
+### Arquitetura de Deploy
+
+```
+meuspets.com (Route53)
+     ↓
+API Gateway
+     ↓
+ALB (Application Load Balancer)
+     ↓
+EC2 Instance
+  ├─ Backend (Port 3001)
+  └─ Frontend (Port 3000)
+     ↓
+AWS Resources
+  ├─ DynamoDB (Pets, Owners, Appointments)
+  ├─ Cognito (Authentication)
+  ├─ ECR (Container Images)
+  └─ CloudWatch (Logs & Monitoring)
+```
+
+### Pipeline de Deploy (CI/CD)
+
+1. **Commit na branch `main`** → GitHub Actions dispara
+2. **Build & Test** → Validação de código
+3. **Build Docker Images** → Frontend + Backend
+4. **Push para ECR** → Amazon Container Registry
+5. **Terraform Apply** → Infraestrutura AWS
+6. **Deploy para EC2** → Pull e restart containers
+7. **Health Check** → Validação de saúde
+
+### Instruções de Deploy Completas
+
+Consulte o arquivo **[DEPLOY.md](./DEPLOY.md)** para:
+- Configuração pré-deploy
+- Variáveis de ambiente
+- Secrets do GitHub
+- Monitoramento e troubleshooting
+
+### Configuração do API Gateway
+
+Para configurar o domínio `meuspets.com` com API Gateway, consulte:
+**[infra/API_GATEWAY_SETUP.md](./infra/API_GATEWAY_SETUP.md)**
 
 ---
 
-## 🏗️ Arquitetura
+## 📖 Documentação Adicional
+
+| Documento | Descrição |
+|-----------|-----------|
+| **[DEPLOY.md](./DEPLOY.md)** | Guia completo de deploy e CI/CD |
+| **[infra/API_GATEWAY_SETUP.md](./infra/API_GATEWAY_SETUP.md)** | Configuração do API Gateway para meuspets.com |
+| **[backend/README.md](./backend/README.md)** | Detalhes da API e testes |
+| **[frontend/README.md](./frontend/README.md)** | Desenvolvimento do frontend |
+
+---
+
+## 🏗️ Arquitetura Completa
 
 ```
-┌─────────────┐      HTTP       ┌─────────────┐
-│   Frontend  │ ───────────────> │   Backend   │
-│  (Next.js)  │     REST API     │  (Express)  │
-│  Port 3000  │ <─────────────── │  Port 3001  │
-└─────────────┘      JSON        └──────┬──────┘
-                                        │
-                                        │ AWS SDK
-                                        ▼
-                                 ┌─────────────┐
-                                 │  DynamoDB   │
-                                 │  Port 8000  │
-                                 └─────────────┘
+meuspets.com
+     ↓
+GitHub Repository
+     ├─ main branch
+     ├─ .github/workflows/
+     │  ├─ deploy.yml (Frontend + Backend)
+     │  └─ backend-deploy.yml (Completo)
+     └─ Code Push
+          ↓
+     GitHub Actions
+          ├─ Lint & Type Check
+          ├─ Testes Unitários
+          ├─ Build Docker
+          └─ Push ECR
+               ↓
+     AWS ECR (Container Registry)
+          ├─ cs20252-backend:latest
+          └─ cs20252-frontend:latest
+               ↓
+     AWS Infrastructure (Terraform)
+          ├─ EC2 Instance
+          │  ├─ Backend Container (3001)
+          │  └─ Frontend Container (3000)
+          ├─ ALB/API Gateway
+          ├─ DynamoDB Tables
+          │  ├─ Pets
+          │  ├─ Owners
+          │  └─ Appointments
+          ├─ Cognito User Pool
+          └─ Route53 DNS
 ```
 
 ---

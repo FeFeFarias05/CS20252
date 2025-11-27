@@ -41,7 +41,7 @@ variable "ecr_repo_name" {
 variable "cognito_domain_prefix" {
   description = "Prefixo do domínio do Cognito Hosted UI (globalmente único)."
   type        = string
-  default     = "cs20252-auth"
+  default     = "meuspets-auth"
 }
 
 variable "cognito_callback_urls" {
@@ -49,7 +49,7 @@ variable "cognito_callback_urls" {
   type        = list(string)
   default     = [
     "http://localhost:3000/callback",
-    "https://meuapp.com/callback"
+    "https://meuspets.com/callback"
   ]
 }
 
@@ -58,7 +58,7 @@ variable "cognito_logout_urls" {
   type        = list(string)
   default     = [
     "http://localhost:3000/logout",
-    "https://meuapp.com/logout"
+    "https://meuspets.com/logout"
   ]
 }
 

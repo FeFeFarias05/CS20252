@@ -18,6 +18,8 @@
     "docs:build": "node scripts/generate-swagger.cjs"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.1",
     "concurrently": "^8.2.0"
   }
 }

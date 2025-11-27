@@ -18,8 +18,10 @@ info:
 servers:
   - url: http://localhost:3001/api/v1
     description: Servidor de desenvolvimento local
-  - url: https://seu-app.herokuapp.com/api/v1
-    description: Servidor de produ&ccedil;&atilde;o
+  - url: https://meuspets.com/api/v1
+    description: Servidor de produção (Gateway API)
+  - url: /api/v1
+    description: Endpoint relativo (para uso em gateway)
 
 security:
   - bearerAuth: []

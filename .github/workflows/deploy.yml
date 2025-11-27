@@ -53,7 +53,10 @@ jobs:
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
           cd frontend
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG .
+          # Build with production environment
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=https://meuspets.com/api/v1 \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
@@ -80,5 +83,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Frontend Image:**" >> $GITHUB_STEP_SUMMARY
           echo "\`$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Domain:** https://meuspets.com" >> $GITHUB_STEP_SUMMARY
+          echo "**API:** https://meuspets.com/api/v1" >> $GITHUB_STEP_SUMMARY
+          echo "**Swagger:** https://meuspets.com/api/v1/docs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Images successfully pushed to ECR!" >> $GITHUB_STEP_SUMMARY
