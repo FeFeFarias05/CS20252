@@ -1,0 +1,211 @@
+name: Backend - Deploy Completo
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'infra/Terraform/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch: # Permite execução manual
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: cs2025af  # Nome do repositório ECR definido no Terraform
+  TERRAFORM_VERSION: 1.5.0
+
+jobs:
+  # Job 1: Provisionar Infraestrutura (DynamoDB, Cognito, ECR, EC2)
+  provision-infra:
+    name: 1️⃣ Provisionar Infraestrutura AWS
+    runs-on: ubuntu-latest
+    outputs:
+      ecr_registry: ${{ steps.ecr-info.outputs.registry }}
+      ecr_repository: ${{ steps.ecr-info.outputs.repository }}
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false  # Importante para capturar outputs
+
+      - name: Terraform Init
+        working-directory: ./infra/Terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./infra/Terraform
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        working-directory: ./infra/Terraform
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./infra/Terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Obter informações do ECR
+        id: ecr-info
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "registry=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> $GITHUB_OUTPUT
+          echo "repository=${ECR_REPOSITORY}" >> $GITHUB_OUTPUT
+
+      - name: Salvar Terraform State (opcional)
+        working-directory: ./infra/Terraform
+        run: |
+          echo "💾 Terraform state atualizado"
+          terraform show -no-color
+
+  # Job 2: Build e Test do Backend
+  build-and-test:
+    name: 2️⃣ Build e Test Backend
+    runs-on: ubuntu-latest
+    needs: provision-infra
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Lint TypeScript
+        working-directory: ./backend
+        run: npm run lint
+
+      - name: Executar testes
+        working-directory: ./backend
+        run: npm test
+
+      - name: Build TypeScript
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Verificar arquivos compilados
+        working-directory: ./backend
+        run: |
+          echo "✅ Arquivos compilados:"
+          ls -la dist/
+
+  # Job 3: Build e Push da imagem Docker
+  build-and-push-docker:
+    name: 3️⃣ Build e Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [provision-infra, build-and-test]
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login no Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build e Push da imagem Docker
+        env:
+          ECR_REGISTRY: ${{ needs.provision-infra.outputs.ecr_registry }}
+          ECR_REPOSITORY: ${{ needs.provision-infra.outputs.ecr_repository }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        working-directory: ./backend
+        run: |
+          echo "🐳 Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          echo "📤 Pushing to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          echo "✅ Image pushed successfully!"
+          echo "📦 Image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Resumo do Deploy
+        env:
+          ECR_REGISTRY: ${{ needs.provision-infra.outputs.ecr_registry }}
+          ECR_REPOSITORY: ${{ needs.provision-infra.outputs.ecr_repository }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          echo "### 🚀 Backend Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Infraestrutura Provisionada:**" >> $GITHUB_STEP_SUMMARY
+          echo "- DynamoDB Tables: Pet, Owner, Appointment" >> $GITHUB_STEP_SUMMARY
+          echo "- Cognito User Pool configurado" >> $GITHUB_STEP_SUMMARY
+          echo "- ECR Repository: \`$ECR_REPOSITORY\`" >> $GITHUB_STEP_SUMMARY
+          echo "- EC2 Instance com Docker" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Imagem Docker:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Testes:** Passaram" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Build:** Sucesso" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 **Próximo passo:** EC2 vai automaticamente fazer pull da nova imagem no próximo boot ou via user_data" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: (Opcional) Deploy para EC2
+  deploy-to-ec2:
+    name: 4️⃣ Deploy para EC2 (Opcional)
+    runs-on: ubuntu-latest
+    needs: [provision-infra, build-and-push-docker]
+    if: github.event_name == 'workflow_dispatch'  # Só roda se for manual
+    
+    steps:
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Reiniciar instância EC2 para aplicar nova imagem
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=cs20252AF" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+          
+          if [ "$INSTANCE_ID" != "None" ] && [ ! -z "$INSTANCE_ID" ]; then
+            echo "🔄 Reiniciando instância $INSTANCE_ID para aplicar nova imagem..."
+            aws ec2 reboot-instances --instance-ids $INSTANCE_ID
+            echo "✅ Instância reiniciada. O container será atualizado automaticamente."
+          else
+            echo "⚠️ Nenhuma instância EC2 encontrada com tag Name=cs20252AF"
+            echo "💡 A instância será criada no próximo terraform apply"
+          fi
