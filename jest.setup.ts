@@ -1,3 +1,7 @@
+// @ts-nocheck
+/// <reference types="jest" />
+import '@testing-library/jest-dom';
+
 // Evita falhas de conexão com DynamoDB real durante testes
 jest.mock('@aws-sdk/lib-dynamodb', () => {
   return {

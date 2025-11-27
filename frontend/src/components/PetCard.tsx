@@ -48,10 +48,10 @@ export default function PetCard({ pet, onEdit, onDelete }: PetCardProps) {
       
       <div className="pet-card-actions">
         <button className="btn-edit" onClick={() => onEdit(pet)}>
-          ✏️ Editar
+            Editar
         </button>
         <button className="btn-delete" onClick={() => onDelete(pet.id)}>
-          🗑️ Remover
+            Remover
         </button>
       </div>
     </div>

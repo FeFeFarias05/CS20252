@@ -1,15 +1,22 @@
-# Terraform Variables Example
-# Copy this file to terraform.tfvars and fill in your values
+# ⚠️ Terraform Variables - AWS Academy
+# 1. Copie este arquivo: cp terraform.tfvars.example terraform.tfvars
+# 2. Preencha com suas credenciais do AWS Academy
+# 3. NUNCA commite terraform.tfvars (já está no .gitignore)
 
-# AWS Region (optional, defaults to us-east-1)
-aws_region = "us-east-1"
+# ===== AWS Academy Credentials =====
+# Pegue em: AWS Academy > AWS Details > AWS CLI
+aws_region            = "us-east-1"
+aws_access_key_id     = "ASIA..."  # Cole aqui a Access Key
+aws_secret_access_key = "..."       # Cole aqui a Secret Key
+aws_session_token     = "..."       # IMPORTANTE: Session Token (só no AWS Academy)
 
-# EC2 Key Pair name (required)
-# Create a key pair in AWS Console first
-key_name = "your-ec2-key-pair-name"
+# ===== Configurações do Projeto =====
+table_name      = "Pet"  # Nome da tabela DynamoDB
+bucket_name     = "cs20252-pets-bucket-unique123"  # Troque 'unique123' por algo único
+ecr_repo_name   = "cs20252-backend"
+key_name        = "vockey"  # Chave SSH padrão do AWS Academy
 
-# S3 Bucket name (must be globally unique)
-bucket_name = "cs20252-bucket-your-unique-suffix"
-
-# DynamoDB Table name
-table_name = "Client"
+# ===== Cognito (Autenticação) =====
+cognito_domain_prefix = "cs20252-auth-unique123"  # Deve ser globalmente único
+cognito_callback_urls = ["http://localhost:3000/callback"]
+cognito_logout_urls   = ["http://localhost:3000"]

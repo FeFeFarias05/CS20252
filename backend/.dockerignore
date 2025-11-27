@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+dist
+coverage
+*.test.ts
+__tests__
+testUtils
+src/__tests__
+src/testUtils
+.git
+.gitignore
+README.md
+.DS_Store

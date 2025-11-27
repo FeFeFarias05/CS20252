@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -18,5 +18,13 @@
     "types": ["node", "jest"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/lib/auth/rbac.ts",
+    "src/lib/auth/withAuth.ts",
+    "src/testUtils/**/*",
+    "src/**/*.test.ts",
+    "src/__tests__/**/*"
+  ]
 }

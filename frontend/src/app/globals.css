@@ -74,7 +74,6 @@ p {
   line-height: 1.6;
 }
 
-/* Pets Page Styles */
 .pets-page {
   max-width: 1400px;
   margin: 0 auto;
@@ -135,7 +134,6 @@ p {
   gap: 30px;
 }
 
-/* Pet Card Styles */
 .pet-card {
   background: white;
   border-radius: 12px;
@@ -249,7 +247,6 @@ p {
   transform: translateY(-2px);
 }
 
-/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;

@@ -1,7 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import usersRouter from './api/users/route';
-import docsRouter from './api/docs/route';
+import petsRouter from './api/pets/routeUsers';
+import { GET as getSwagger } from './api/docs/route';
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -24,10 +24,27 @@ app.use((req, res, next) => {
 });
 
 // Rotas
-app.use('/api/users', usersRouter);
-app.use('/api/docs', docsRouter);
+app.use('/api/pets', petsRouter);
+app.get('/api/docs', getSwagger);
 
-// Health check
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API está funcionando
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ */
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
@@ -35,7 +52,7 @@ app.get('/health', (req, res) => {
 // Iniciar servidor apenas se não estiver em ambiente de teste
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`🚀 Backend rodando na porta ${PORT}`);
+    console.log(`Backend rodando na porta ${PORT}`);
   });
 }
 

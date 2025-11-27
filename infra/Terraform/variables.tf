@@ -64,3 +64,10 @@ variable "aws_secret_access_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "aws_session_token" {
+  description = "AWS Session Token (necessário para AWS Academy)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

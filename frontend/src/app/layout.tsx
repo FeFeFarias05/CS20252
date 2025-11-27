@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sprint 0 - Frontend',
-  description: 'Aplicação frontend do Sprint 0',
+  title: 'Agenda dos meus pets'
 };
 
 export default function RootLayout({

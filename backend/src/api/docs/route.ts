@@ -1,7 +1,6 @@
-// src/app/api/docs/route.ts
-import { NextResponse } from 'next/server';
-import { swaggerSpec } from '@/lib/swagger';
+import { Request, Response } from 'express';
+import { swaggerSpec } from '../../lib/swagger';
 
-export async function GET() {
-  return NextResponse.json(swaggerSpec);
+export async function GET(req: Request, res: Response) {
+  return res.json(swaggerSpec);
 }

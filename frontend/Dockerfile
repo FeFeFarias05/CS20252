@@ -18,7 +18,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=frontend-deps /app/node_modules ./node_modules
 COPY --from=frontend-builder /app/.next ./.next
-COPY --from=frontend-builder /app/public ./public
 COPY --from=frontend-builder /app/package*.json ./
 COPY --from=frontend-builder /app/next.config.js ./
 EXPOSE 3000

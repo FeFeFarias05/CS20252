@@ -1,23 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { dynamoDBService } from '@/lib/dynamodb';
+import { Request, Response } from 'express';
+import { dynamoDBService } from '../../../lib/dynamodb';
 
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: Request, res: Response) {
   try {
-    const pet = await dynamoDBService.getPetById(params.id);
-    return pet
-      ? NextResponse.json(pet)
-      : NextResponse.json({ error: 'not found' }, { status: 404 });
+    const { id } = req.params;
+    const pet = await dynamoDBService.getPetById(id);
+    
+    if (!pet) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    
+    return res.json(pet);
   } catch (error) {
     console.error('Error fetching pet:', error);
-    return NextResponse.json({ error: 'internal server error' }, { status: 500 });
+    return res.status(500).json({ error: 'internal server error' });
   }
 }
 
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, res: Response) {
   try {
-    const { nome, foto, idade, raca, peso, medicacoes, informacoes } = await req.json();
+    const { id } = req.params;
+    const { nome, foto, idade, raca, peso, medicacoes, informacoes } = req.body;
 
     const updateData: any = {};
     if (nome !== undefined) updateData.nome = nome;
@@ -28,25 +33,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (medicacoes !== undefined) updateData.medicacoes = medicacoes;
     if (informacoes !== undefined) updateData.informacoes = informacoes;
 
-    const pet = await dynamoDBService.updatePet(params.id, updateData);
-    return pet
-      ? NextResponse.json(pet)
-      : NextResponse.json({ error: 'not found' }, { status: 404 });
+    const pet = await dynamoDBService.updatePet(id, updateData);
+    
+    if (!pet) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    
+    return res.json(pet);
   } catch (error) {
     console.error('Error updating pet:', error);
-    return NextResponse.json({ error: 'internal server error' }, { status: 500 });
+    return res.status(500).json({ error: 'internal server error' });
   }
 }
 
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, res: Response) {
   try {
-    const success = await dynamoDBService.deletePet(params.id);
-    return success
-      ? NextResponse.json({ ok: true })
-      : NextResponse.json({ error: 'not found' }, { status: 404 });
+    const { id } = req.params;
+    const success = await dynamoDBService.deletePet(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    
+    return res.json({ ok: true });
   } catch (error) {
     console.error('Error deleting pet:', error);
-    return NextResponse.json({ error: 'internal server error' }, { status: 500 });
+    return res.status(500).json({ error: 'internal server error' });
   }
 }
