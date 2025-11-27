@@ -13,7 +13,7 @@ const options = {
     },
     servers: [
       { url: 'http://localhost:3001', description: 'Development' },
-      { url: 'https://api.cs20252.com', description: 'Production' }
+      { url: 'https://meuspets.com', description: 'Production' }
     ],
     components: {
       schemas: {
