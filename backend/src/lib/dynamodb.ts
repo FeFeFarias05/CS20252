@@ -47,7 +47,8 @@ if (isTest) {
       }
 
       if (name === 'ScanCommand') {
-        return { Items: Array.from(store.values()) };
+        const items = Array.from(store.values());
+        return { Items: items };
       }
 
       if (name === 'UpdateCommand') {
@@ -67,6 +68,7 @@ if (isTest) {
           existing[realName] = val as any;
         }
 
+        existing.updatedAt = new Date().toISOString();
         store.set(petId, existing);
         return { Attributes: existing };
       }
@@ -96,7 +98,34 @@ export interface Pet {
   peso: number;
   medicacoes: string;
   informacoes: string;
+  ownerId: string | null;
   createdAt: string;
+}
+
+export interface Owner {
+  ownerId: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  createdAt: string;
+}
+
+export interface Appointment {
+  appointmentId: string;
+  petId: string;
+  ownerId?: string | null;
+  dataHora: string; // ISO string
+  createdAt: string;
+}
+
+function ageRangeToFilter(ageGroup?: string) {
+  if (!ageGroup) return null;
+  if (ageGroup === '15+') return { min: 15, max: 30 };
+  const parts = ageGroup.split('-').map((v) => Number(v));
+  if (parts.length === 2 && !Number.isNaN(parts[0]) && !Number.isNaN(parts[1])) {
+    return { min: parts[0], max: parts[1] };
+  }
+  return null;
 }
 
 export class DynamoDBService {
@@ -109,6 +138,7 @@ export class DynamoDBService {
   async createPet(
     pet: Omit<Pet, "petId" | "createdAt">
   ): Promise<Pet> {
+    const now = new Date().toISOString();
     const newPet: Pet = {
       petId: crypto.randomUUID(),
       ...pet,
@@ -124,34 +154,82 @@ export class DynamoDBService {
     return newPet;
   }
 
-  async getPetById(petId: string): Promise<Pet | null> {
-    const command = new GetCommand({
+  async getPetById(idOrName: string): Promise<Pet | null> {
+    const getCmd = new GetCommand({
       TableName: TABLE_NAME,
-      Key: { petId },
+      Key: { petId: idOrName },
     });
+    const res = await dynamodb.send(getCmd);
+    if (res.Item) return (res.Item as Pet) || null;
 
-    const response = await dynamodb.send(command);
-    return (response.Item as Pet) || null;
+    const scanCmd = new ScanCommand({
+      TableName: TABLE_NAME,
+    });
+    const scanRes = await dynamodb.send(scanCmd);
+    const items = (scanRes.Items || []) as Pet[];
+    const found = items.find(i => (i.nome || '').toLowerCase() === idOrName.toLowerCase());
+    return (found as Pet) || null;
+  }
+
+  async listPets(opts: { page?: number; limit?: number; ageGroup?: string; name?: string }) {
+    const page = Number(opts.page || 1);
+    const limit = Number(opts.limit || 10);
+    const name = opts.name;
+    const ageFilter = ageRangeToFilter(opts.ageGroup);
+
+    const scanCmd = new ScanCommand({ TableName: TABLE_NAME });
+    const scanRes = await dynamodb.send(scanCmd);
+    let items = (scanRes.Items || []) as Pet[];
+
+    if (name) {
+      const q = name.toLowerCase();
+      items = items.filter(i => (i.nome || '').toLowerCase().includes(q));
+    }
+
+    if (ageFilter) {
+      items = items.filter(i => {
+        const age = Number(i.idade) || 0;
+        return age >= ageFilter.min && age <= ageFilter.max;
+      });
+    }
+
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const total = items.length;
+    const start = (page - 1) * limit;
+    const paged = items.slice(start, start + limit);
+
+    return { items: paged, total, page, limit };
   }
 
   async updatePet(
     petId: string,
     updates: Partial<Omit<Pet, "petId" | "createdAt">>
   ): Promise<Pet | null> {
-    const updateExpression = [];
+    const updateExpressionParts: string[] = [];
     const attributeValues: any = {};
     const attributeNames: any = {};
+    let idx = 0;
 
     for (const [key, value] of Object.entries(updates)) {
-      updateExpression.push(`#${key} = :${key}`);
-      attributeNames[`#${key}`] = key;
-      attributeValues[`:${key}`] = value;
+      idx++;
+      const nameToken = `#f${idx}`;
+      const valToken = `:v${idx}`;
+      updateExpressionParts.push(`${nameToken} = ${valToken}`);
+      attributeNames[nameToken] = key;
+      attributeValues[valToken] = value;
+    }
+
+    if (updateExpressionParts.length === 0) {
+      const getCmd = new GetCommand({ TableName: TABLE_NAME, Key: { petId } });
+      const getRes = await dynamodb.send(getCmd);
+      return (getRes.Item as Pet) || null;
     }
 
     const command = new UpdateCommand({
       TableName: TABLE_NAME,
       Key: { petId },
-      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      UpdateExpression: `SET ${updateExpressionParts.join(", ")}`,
       ExpressionAttributeNames: attributeNames,
       ExpressionAttributeValues: attributeValues,
       ReturnValues: "ALL_NEW",

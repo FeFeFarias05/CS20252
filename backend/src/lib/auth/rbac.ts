@@ -48,3 +48,45 @@ export async function requireSelfOrAdmin(req: NextRequest, userId: string) {
 
   return payload;
 }
+
+export async function requireOperator(req: NextRequest) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  let payload: AuthPayload;
+  try {
+    payload = await verifyJWT(token) as AuthPayload;
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!(payload.roles?.includes('operator') || payload.roles?.includes('admin'))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return payload;
+}
+
+export async function requireRole(req: NextRequest, role: string) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  let payload: AuthPayload;
+  try {
+    payload = await verifyJWT(token) as AuthPayload;
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!payload.roles?.includes(role) && !payload.roles?.includes('admin')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return payload;
+}

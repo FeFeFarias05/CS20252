@@ -21,6 +21,7 @@ export default function PetCard({ pet, onEdit, onDelete }: PetCardProps) {
           )}
         </div>
         <h2>{pet.nome}</h2>
+        <h3>ID: {pet.id}</h3>
       </div>
       
       <div className="pet-info">
