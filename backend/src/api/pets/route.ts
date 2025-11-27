@@ -1,34 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { dynamoDBService } from '@/lib/dynamodb';
-import { requireOperator } from '@/lib/auth/rbac';
+import { Request, Response } from 'express';
+import { dynamoDBService } from '../../lib/dynamodb';
+import { requireOperator } from '../../lib/auth/rbac';
 
 
 export async function GET(req: Request, res: Response) {
   try {
-    const url = new URL(req.url);
-    const page = url.searchParams.get('page') || '1';
-    const limit = url.searchParams.get('limit') || '10';
-    const ageGroup = url.searchParams.get('ageGroup') || undefined;
-    const name = url.searchParams.get('name') || undefined;
+    const page = req.query.page as string || '1';
+    const limit = req.query.limit as string || '10';
+    const ageGroup = req.query.ageGroup as string || undefined;
+    const name = req.query.name as string || undefined;
 
     const result = await dynamoDBService.listPets({ page: Number(page), limit: Number(limit), ageGroup, name });
-    return NextResponse.json(result);
+    return res.json(result);
   } catch (error) {
     console.error('Error listing pets:', error);
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
+    return res.status(500).json({ error: 'internal' });
   }
 }
 
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request, res: Response) {
   const authCheck = await requireOperator(req);
-  if ((authCheck as any)?.status) return authCheck;
+  if (authCheck) return authCheck;
 
   try {
-    const body = await req.json() as any;
-    const { nome, foto, idade, raca, peso, medicacoes, informacoes, ownerId } = body;
+    const { nome, foto, idade, raca, peso, medicacoes, informacoes, ownerId } = req.body;
     if (!nome || idade === undefined || !raca || peso === undefined) {
-      return NextResponse.json({ error: 'nome, idade, raca, and peso are required' }, { status: 400 });
+      return res.status(400).json({ error: 'nome, idade, raca, and peso are required' });
     }
     const pet = await dynamoDBService.createPet({ 
       nome, 
@@ -40,9 +38,61 @@ export async function POST(req: NextRequest) {
       informacoes: informacoes || '',
       ownerId
     });
-    return NextResponse.json(pet, { status: 201 });
+    return res.status(201).json(pet);
   } catch (err) {
     console.error('Error creating pet:', err);
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
+    return res.status(500).json({ error: 'internal' });
+  }
+}
+
+export async function PUT(req: Request, res: Response) {
+  const authCheck = await requireOperator(req);
+  if (authCheck) return authCheck;
+
+  try {
+    const { id } = req.params;
+    const { nome, foto, idade, raca, peso, medicacoes, informacoes } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Pet ID is required' });
+    }
+
+    const updatedPet = await dynamoDBService.updatePet(id, {
+      nome,
+      foto,
+      idade,
+      raca,
+      peso,
+      medicacoes,
+      informacoes
+    });
+
+    if (!updatedPet) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    return res.json(updatedPet);
+  } catch (err) {
+    console.error('Error updating pet:', err);
+    return res.status(500).json({ error: 'internal' });
+  }
+}
+
+export async function DELETE(req: Request, res: Response) {
+  const authCheck = await requireOperator(req);
+  if (authCheck) return authCheck;
+
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Pet ID is required' });
+    }
+
+    await dynamoDBService.deletePet(id);
+    return res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting pet:', err);
+    return res.status(500).json({ error: 'internal' });
   }
 }

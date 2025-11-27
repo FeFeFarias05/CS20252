@@ -82,41 +82,21 @@ export default function PetsPage() {
         </button>
       </div>
 
-      <div className="filters-container">
-        <div className="filter-group">
-          <label htmlFor="search-id">🔍 Buscar por ID</label>
-          <input
-            id="search-id"
-            type="text"
-            placeholder="Digite o ID do pet..."
-            value={searchId}
-            onChange={e => setSearchId(e.target.value)}
-            className="filter-input"
-          />
-        </div>
+      <div style={{ marginTop: 12, marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          placeholder="Pesquisar por id"
+          value={searchId}
+          onChange={e => { setSearchId(e.target.value); }}
+          style={{ padding: 6 }}
+        />
 
-        <div className="filter-group">
-          <label htmlFor="age-filter">🎂 Faixa Etária</label>
-          <select 
-            id="age-filter"
-            value={ageGroup} 
-            onChange={e => setAgeGroup(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">Todas as idades</option>
-            {AGE_GROUPS.map(g => (
-              <option key={g} value={g}>{g} anos</option>
-            ))}
-          </select>
-        </div>
+        <select value={ageGroup} onChange={e => setAgeGroup(e.target.value)} style={{ padding: 6 }}>
+          <option value="">Todas as idades</option>
+          {AGE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
 
-        <button 
-          onClick={() => { setSearchId(''); setAgeGroup(''); }}
-          className="btn-clear-filters"
-          title="Limpar filtros"
-          disabled={!searchId && !ageGroup}
-        >
-          ✕ Limpar
+        <button onClick={() => { setSearchId(''); setAgeGroup(''); }} style={{ padding: 6 }}>
+          Limpar filtros
         </button>
       </div>
 
