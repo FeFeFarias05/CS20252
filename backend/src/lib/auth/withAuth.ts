@@ -1,14 +1,14 @@
-import { NextRequest } from 'next/server';
+import { Request } from 'express';
 import { verifyJWT } from './jwt';
 import { extractAuthInfo, AuthInfo } from './permissions';
 
 export type AuthenticatedRequest = {
-  req: NextRequest;
+  req: Request;
   auth: AuthInfo;
 };
 
-export async function requireAuth(req: NextRequest): Promise<AuthenticatedRequest> {
-  const authHeader = req.headers.get('authorization') ?? '';
+export async function requireAuth(req: Request): Promise<AuthenticatedRequest> {
+  const authHeader = req.headers.authorization ?? '';
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('Missing Authorization header');
   }

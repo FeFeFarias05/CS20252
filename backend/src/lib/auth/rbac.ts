@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { Request, Response } from 'express';
 import { verifyJWT } from './jwt';
 
 interface AuthPayload {
@@ -7,10 +7,34 @@ interface AuthPayload {
   [key: string]: any;
 }
 
-export async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization');
+// Helper to get authenticated user info
+export async function getAuthInfo(req: Request): Promise<AuthPayload | null> {
+  const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return null;
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const payload = await verifyJWT(token) as AuthPayload;
+    return payload;
+  } catch (err: any) {
+    return null;
+  }
+}
+
+export function isAdmin(auth: AuthPayload | null): boolean {
+  return auth?.roles?.includes('admin') || false;
+}
+
+export function isOperator(auth: AuthPayload | null): boolean {
+  return auth?.roles?.includes('operator') || auth?.roles?.includes('admin') || false;
+}
+
+export async function requireAdmin(req: Request): Promise<AuthPayload | Response> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null as any; // Will be handled by caller
   }
 
   const token = authHeader.split(' ')[1];
@@ -18,20 +42,20 @@ export async function requireAdmin(req: NextRequest) {
   try {
     payload = await verifyJWT(token) as AuthPayload;
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? 'Unauthorized' }, { status: 401 });
+    return null as any; // Will be handled by caller
   }
 
   if (!payload.roles?.includes('admin')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return null as any; // Will be handled by caller
   }
 
   return payload;
 }
 
-export async function requireSelfOrAdmin(req: NextRequest, userId: string) {
-  const authHeader = req.headers.get('Authorization');
+export async function requireSelfOrAdmin(req: Request, userId: string): Promise<AuthPayload | Response> {
+  const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return null as any;
   }
 
   const token = authHeader.split(' ')[1];
@@ -39,20 +63,20 @@ export async function requireSelfOrAdmin(req: NextRequest, userId: string) {
   try {
     payload = await verifyJWT(token) as AuthPayload;
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? 'Unauthorized' }, { status: 401 });
+    return null as any;
   }
 
   if (payload.sub !== userId && !payload.roles?.includes('admin')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return null as any;
   }
 
   return payload;
 }
 
-export async function requireOperator(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization');
+export async function requireOperator(req: Request): Promise<AuthPayload | Response | null> {
+  const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return null;
   }
 
   const token = authHeader.split(' ')[1];
@@ -60,20 +84,20 @@ export async function requireOperator(req: NextRequest) {
   try {
     payload = await verifyJWT(token) as AuthPayload;
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? 'Unauthorized' }, { status: 401 });
+    return null;
   }
 
   if (!(payload.roles?.includes('operator') || payload.roles?.includes('admin'))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return null;
   }
 
   return payload;
 }
 
-export async function requireRole(req: NextRequest, role: string) {
-  const authHeader = req.headers.get('Authorization');
+export async function requireRole(req: Request, role: string): Promise<AuthPayload | Response | null> {
+  const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return null;
   }
 
   const token = authHeader.split(' ')[1];
@@ -81,11 +105,11 @@ export async function requireRole(req: NextRequest, role: string) {
   try {
     payload = await verifyJWT(token) as AuthPayload;
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? 'Unauthorized' }, { status: 401 });
+    return null;
   }
 
   if (!payload.roles?.includes(role) && !payload.roles?.includes('admin')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return null;
   }
 
   return payload;

@@ -68,18 +68,24 @@ resource "aws_instance" "app_instance" {
     set -e
 
     apt update -y
-    apt install -y docker.io
+    apt install -y docker.io awscli
     systemctl enable docker
     systemctl start docker
 
-    docker pull fernetest/cs20252:latest
+    # Login no ECR
+    aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${aws_ecr_repository.repository.repository_url}
+
+    # Pull da imagem do ECR
+    docker pull ${aws_ecr_repository.repository.repository_url}:latest
 
     # Sobe o container
     docker run -d -p 3000:3000 \
       -e AWS_REGION=${var.aws_region} \
       -e DYNAMODB_TABLE_NAME=${var.table_name} \
+      -e DYNAMODB_OWNER_TABLE_NAME=${var.owner_table_name} \
+      -e DYNAMODB_APPOINTMENT_TABLE_NAME=${var.appointment_table_name} \
       -e NODE_ENV=production \
-      fernetest/cs20252:latest
+      ${aws_ecr_repository.repository.repository_url}:latest
   EOF
 
   tags = { Name = "cs20252AF" }
@@ -98,6 +104,34 @@ resource "aws_dynamodb_table" "pet_table" {
   }
 
   tags = { Name = var.table_name }
+}
+
+resource "aws_dynamodb_table" "owner_table" {
+  name         = var.owner_table_name
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "ownerId"
+
+  attribute {
+    name = "ownerId"
+    type = "S"
+  }
+
+  tags = { Name = var.owner_table_name }
+}
+
+resource "aws_dynamodb_table" "appointment_table" {
+  name         = var.appointment_table_name
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "appointmentId"
+
+  attribute {
+    name = "appointmentId"
+    type = "S"
+  }
+
+  tags = { Name = var.appointment_table_name }
 }
 
 resource "aws_s3_bucket" "example_bucket" {
@@ -197,6 +231,8 @@ AWS_REGION=${var.aws_region}
 AWS_ACCESS_KEY_ID=${var.aws_access_key_id}
 AWS_SECRET_ACCESS_KEY=${var.aws_secret_access_key}
 DYNAMODB_TABLE_NAME=${var.table_name}
+DYNAMODB_OWNER_TABLE_NAME=${var.owner_table_name}
+DYNAMODB_APPOINTMENT_TABLE_NAME=${var.appointment_table_name}
 JWT_ISSUER=${local.jwt_issuer}
 JWT_AUDIENCE=${local.jwt_audience}
 JWKS_URI=${local.jwks_uri}

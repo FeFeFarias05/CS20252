@@ -14,6 +14,9 @@ const config: Config = {
     '!src/**/*.test.ts',
     '!src/testUtils/**',
   ],
+  transformIgnorePatterns: [
+    'node_modules/(?!(jose)/)',
+  ],
 };
 
 export default config;

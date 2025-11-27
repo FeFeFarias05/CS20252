@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import petsRouter from './api/pets/routeUsers';
+import ownersRouter from './api/owners/index';
+import appointmentsRouter from './api/appointments/index';
 import { GET as getSwagger } from './api/docs/route';
 
 // Carregar variáveis de ambiente
@@ -23,9 +25,30 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rotas
+// Rotas v1
+app.use('/api/v1/pets', petsRouter);
+app.use('/api/v1/owners', ownersRouter);
+app.use('/api/v1/appointments', appointmentsRouter);
+app.get('/api/v1/docs', getSwagger);
+
+// Backwards compatibility (deprecated)
 app.use('/api/pets', petsRouter);
 app.get('/api/docs', getSwagger);
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Pet Clinic API',
+    version: 'v1',
+    endpoints: {
+      docs: '/api/v1/docs',
+      health: '/health',
+      pets: '/api/v1/pets',
+      owners: '/api/v1/owners',
+      appointments: '/api/v1/appointments'
+    }
+  });
+});
 
 /**
  * @swagger

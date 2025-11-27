@@ -15,6 +15,18 @@ variable "table_name" {
   default     = "Pet"
 }
 
+variable "owner_table_name" {
+  description = "Nome da tabela DynamoDB para owners."
+  type        = string
+  default     = "Owner"
+}
+
+variable "appointment_table_name" {
+  description = "Nome da tabela DynamoDB para appointments."
+  type        = string
+  default     = "Appointment"
+}
+
 variable "bucket_name" {
   description = "Nome do bucket S3."
   type        = string

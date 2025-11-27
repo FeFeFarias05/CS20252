@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Backend API (Express)
   backend:
     build:
       context: ./backend
@@ -17,6 +16,8 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       - DYNAMODB_ENDPOINT=http://dynamodb:8000
       - DYNAMODB_TABLE_NAME=Pet
+      - DYNAMODB_OWNER_TABLE_NAME=Owner
+      - DYNAMODB_APPOINTMENT_TABLE_NAME=Appointment
     depends_on:
       - dynamodb
     volumes:
@@ -27,7 +28,6 @@ services:
       - app-network
     restart: unless-stopped
 
-  # Frontend (Next.js)
   frontend:
     build:
       context: ./frontend
@@ -48,7 +48,6 @@ services:
       - app-network
     restart: unless-stopped
 
-  # DynamoDB Local
   dynamodb:
     image: amazon/dynamodb-local:latest
     container_name: cs20252-dynamodb

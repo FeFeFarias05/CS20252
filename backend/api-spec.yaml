@@ -1,23 +1,39 @@
 openapi: 3.0.3
 info:
-  title: Pets API
-  description: API para gerenciamento de pets - Sistema de Agenda de Pets
+  title: Pet Clinic API
+  description: |
+    API completa para gerenciamento de cl&iacute;nica veterin&aacute;ria com Pets, Donos (Owners) e Agendamentos (Appointments).
+    
+    **Autentica&ccedil;&atilde;o**: Todas as rotas (exceto health check) requerem JWT Bearer token.
+    
+    **Pap&eacute;is**:
+    - `admin`: Acesso total ao sistema
+    - `operator`: Pode gerenciar pets e appointments
+    - `user`: Acesso limitado apenas aos pr&oacute;prios recursos
   version: 1.0.0
   contact:
-    name: Construção de Software PUCRS
+    name: Constru&ccedil;&atilde;o de Software PUCRS
     email: contato@exemplo.com
 
 servers:
-  - url: http://localhost:3000/api
+  - url: http://localhost:3001/api/v1
     description: Servidor de desenvolvimento local
-  - url: https://seu-app.herokuapp.com/api
-    description: Servidor de produção
+  - url: https://seu-app.herokuapp.com/api/v1
+    description: Servidor de produ&ccedil;&atilde;o
+
+security:
+  - bearerAuth: []
 
 paths:
   /pets:
     get:
       summary: Listar todos os pets
-      description: Retorna uma lista de todos os pets ordenados por data de criação (mais recentes primeiro)
+      description: |
+        Retorna uma lista de todos os pets ordenados por data de criação (mais recentes primeiro).
+        
+        **Controle de acesso**:
+        - `admin`: Vê todos os pets
+        - `operator`/`user`: Vê apenas pets próprios (filtrados por ownerId)
       tags:
         - Pets
       responses:
@@ -29,35 +45,27 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Pet'
-              examples:
-                success:
-                  summary: Exemplo de resposta de sucesso
-                  value:
-                    - petId: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
-                      nome: "Rex"
-                      foto: "https://example.com/rex.jpg"
-                      idade: 3
-                      raca: "Labrador"
-                      peso: 25.5
-                      medicacoes: "Antipulgas mensais"
-                      informacoes: "Cachorro muito amigável"
-                      createdAt: "2025-11-26T21:00:17.414Z"
-                      updatedAt: "2025-11-26T21:00:17.414Z"
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
         '500':
           description: Erro interno do servidor
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              examples:
-                server_error:
-                  summary: Erro do servidor
-                  value:
-                    error: "Failed to fetch pets"
 
     post:
       summary: Criar um novo pet
-      description: Adiciona um novo pet ao sistema
+      description: |
+        Adiciona um novo pet ao sistema.
+        
+        **Regras**:
+        - Usuários não-admin: `ownerId` é automaticamente definido como o `sub` do token
+        - Admin: Pode especificar qualquer `ownerId`
       tags:
         - Pets
       requestBody:
@@ -65,18 +73,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePetRequest'
-            examples:
-              valid_pet:
-                summary: Exemplo de pet válido
-                value:
-                  nome: "Mia"
-                  foto: "https://example.com/mia.jpg"
-                  idade: 2
-                  raca: "Siamês"
-                  peso: 4.5
-                  medicacoes: "Vacina anual"
-                  informacoes: "Gata muito calma"
+              type: object
+              required:
+                - nome
+                - idade
+                - raca
+                - peso
+              properties:
+                nome:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                idade:
+                  type: number
+                  minimum: 0
+                raca:
+                  type: string
+                peso:
+                  type: number
+                  minimum: 0
+                foto:
+                  type: string
+                medicacoes:
+                  type: string
+                informacoes:
+                  type: string
+                ownerId:
+                  type: string
+                  format: uuid
+                  description: Apenas admin pode especificar
       responses:
         '201':
           description: Pet criado com sucesso
@@ -84,47 +109,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Pet'
-              examples:
-                created_pet:
-                  summary: Pet criado
-                  value:
-                    petId: "6e9f2a5f-5205-4b96-814f-626477f00a5d"
-                    nome: "Mia"
-                    foto: "https://example.com/mia.jpg"
-                    idade: 2
-                    raca: "Siamês"
-                    peso: 4.5
-                    medicacoes: "Vacina anual"
-                    informacoes: "Gata muito calma"
-                    createdAt: "2025-11-26T21:03:45.123Z"
-                    updatedAt: "2025-11-26T21:03:45.123Z"
         '400':
           description: Dados de entrada inválidos
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              examples:
-                missing_fields:
-                  summary: Campos obrigatórios ausentes
-                  value:
-                    error: "nome, idade, raca e peso são obrigatórios"
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
         '500':
           description: Erro interno do servidor
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              examples:
-                server_error:
-                  summary: Erro do servidor
-                  value:
-                    error: "internal"
 
   /pets/{id}:
     get:
       summary: Buscar pet por ID
-      description: Retorna um pet específico pelo seu ID
+      description: |
+        Retorna um pet específico pelo seu ID.
+        
+        **Controle de acesso**:
+        - `admin`: Pode acessar qualquer pet
+        - `operator`/`user`: Apenas pets próprios
       tags:
         - Pets
       parameters:
@@ -135,7 +147,6 @@ paths:
           schema:
             type: string
             format: uuid
-            example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
       responses:
         '200':
           description: Pet encontrado
@@ -143,21 +154,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Pet'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - pet pertence a outro usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
         '404':
           description: Pet não encontrado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              examples:
-                not_found:
-                  summary: Pet não encontrado
-                  value:
-                    error: "not found"
 
     put:
       summary: Atualizar pet
-      description: Atualiza os dados de um pet existente
+      description: |
+        Atualiza os dados de um pet existente.
+        
+        **Controle de acesso**:
+        - `admin`: Pode atualizar qualquer pet
+        - `operator`/`user`: Apenas pets próprios
       tags:
         - Pets
       parameters:
@@ -173,7 +196,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdatePetRequest'
+              type: object
+              properties:
+                nome:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                idade:
+                  type: number
+                  minimum: 0
+                raca:
+                  type: string
+                peso:
+                  type: number
+                  minimum: 0
+                foto:
+                  type: string
+                medicacoes:
+                  type: string
+                informacoes:
+                  type: string
       responses:
         '200':
           description: Pet atualizado com sucesso
@@ -187,6 +229,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - pet pertence a outro usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
         '404':
           description: Pet não encontrado
           content:
@@ -196,7 +250,15 @@ paths:
 
     delete:
       summary: Deletar pet
-      description: Remove um pet do sistema
+      description: |
+        Remove um pet do sistema.
+        
+        **Validações**:
+        - Não permite deletar pet com agendamentos ativos
+        
+        **Controle de acesso**:
+        - `admin`: Pode deletar qualquer pet
+        - `operator`/`user`: Apenas pets próprios
       tags:
         - Pets
       parameters:
@@ -218,6 +280,817 @@ paths:
                   ok:
                     type: boolean
                     example: true
+        '400':
+          description: Pet possui agendamentos ativos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Cannot delete pet with active appointments"
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - pet pertence a outro usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Pet não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /owners:
+    get:
+      summary: Listar todos os donos
+      description: |
+        Retorna lista paginada de donos com filtro opcional por email.
+        
+        **Requer papel**: `admin`
+      tags:
+        - Owners
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: email
+          in: query
+          schema:
+            type: string
+            format: email
+          description: Filtrar por email
+      responses:
+        '200':
+          description: Lista de donos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owners:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Owner'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+
+    post:
+      summary: Criar novo dono
+      description: |
+        Adiciona um novo dono ao sistema.
+        
+        **Requer papel**: `admin`
+        
+        **Validações**:
+        - Email válido obrigatório
+      tags:
+        - Owners
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nome
+                - email
+              properties:
+                nome:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                telefone:
+                  type: string
+                cpf:
+                  type: string
+                endereco:
+                  type: string
+      responses:
+        '201':
+          description: Dono criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+
+  /owners/{id}:
+    get:
+      summary: Buscar dono por ID
+      description: |
+        Retorna um dono específico.
+        
+        **Requer papel**: `admin`
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dono encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Dono não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Atualizar dono
+      description: |
+        Atualiza dados de um dono existente.
+        
+        **Requer papel**: `admin`
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                telefone:
+                  type: string
+                cpf:
+                  type: string
+                endereco:
+                  type: string
+      responses:
+        '200':
+          description: Dono atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Dono não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Deletar dono
+      description: |
+        Remove um dono do sistema.
+        
+        **Validações**:
+        - Não permite deletar dono com pets cadastrados
+        
+        **Requer papel**: `admin`
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dono deletado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '400':
+          description: Dono possui pets cadastrados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Dono não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /owners/{id}/pets:
+    get:
+      summary: Listar pets de um dono
+      description: |
+        Retorna todos os pets vinculados a um dono específico.
+        
+        **Requer papel**: `admin`
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de pets do dono
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Dono não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /owners/{id}/appointments:
+    get:
+      summary: Listar agendamentos de um dono
+      description: |
+        Retorna todos os agendamentos vinculados a um dono específico.
+        
+        **Requer papel**: `admin`
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de agendamentos do dono
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - apenas admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Dono não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /appointments:
+    get:
+      summary: Listar agendamentos
+      description: |
+        Retorna lista de agendamentos com filtros opcionais.
+        
+        **Requer papel**: `operator` ou `admin`
+        
+        **Controle de acesso**:
+        - `admin`: Vê todos os agendamentos
+        - `operator`: Apenas agendamentos próprios (por ownerId)
+      tags:
+        - Appointments
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pendente, confirmado, cancelado]
+        - name: petId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de agendamentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - requer papel operator ou admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+
+    post:
+      summary: Criar agendamento
+      description: |
+        Cria um novo agendamento.
+        
+        **Requer papel**: `operator` ou `admin`
+        
+        **Validações**:
+        - Data/hora deve ser futura
+        - Não pode haver conflito (mesmo pet em janela de 1 hora)
+        - Pet e owner devem existir
+      tags:
+        - Appointments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - petId
+                - ownerId
+                - dataHora
+              properties:
+                petId:
+                  type: string
+                  format: uuid
+                ownerId:
+                  type: string
+                  format: uuid
+                dataHora:
+                  type: string
+                  format: date-time
+                  description: Deve ser futura
+                observacoes:
+                  type: string
+      responses:
+        '201':
+          description: Agendamento criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Dados inválidos ou conflito de horário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                past_date:
+                  value:
+                    error: "dataHora must be in the future"
+                conflict:
+                  value:
+                    error: "There is already an appointment for this pet within 1 hour"
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado - requer papel operator ou admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+
+  /appointments/{id}:
+    get:
+      summary: Buscar agendamento por ID
+      description: |
+        Retorna um agendamento específico.
+        
+        **Requer papel**: `operator` ou `admin`
+        
+        **Controle de acesso**:
+        - `admin`: Qualquer agendamento
+        - `operator`: Apenas próprios
+      tags:
+        - Appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agendamento encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Agendamento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Atualizar agendamento
+      description: |
+        Atualiza dados de um agendamento.
+        
+        **Requer papel**: `operator` ou `admin`
+        
+        **Validações**:
+        - Não permite alterar agendamentos cancelados
+        - Data/hora deve ser futura se alterada
+      tags:
+        - Appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dataHora:
+                  type: string
+                  format: date-time
+                observacoes:
+                  type: string
+      responses:
+        '200':
+          description: Agendamento atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Dados inválidos ou agendamento cancelado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Agendamento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Deletar agendamento
+      description: |
+        Remove um agendamento.
+        
+        **Requer papel**: `operator` ou `admin`
+      tags:
+        - Appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agendamento deletado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Agendamento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /appointments/{id}/confirm:
+    post:
+      summary: Confirmar agendamento
+      description: |
+        Altera status de 'pendente' para 'confirmado'.
+        
+        **Requer papel**: `operator` ou `admin`
+        
+        **Validações**:
+        - Apenas agendamentos 'pendente' podem ser confirmados
+      tags:
+        - Appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agendamento confirmado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Agendamento não está pendente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Only pending appointments can be confirmed"
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Agendamento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /appointments/{id}/cancel:
+    post:
+      summary: Cancelar agendamento
+      description: |
+        Altera status para 'cancelado'.
+        
+        **Requer papel**: `operator` ou `admin`
+        
+        **Validações**:
+        - Agendamentos já cancelados não podem ser cancelados novamente
+      tags:
+        - Appointments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agendamento cancelado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Agendamento já cancelado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Appointment is already cancelled"
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Agendamento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /pets/{id}/appointments:
+    get:
+      summary: Listar agendamentos de um pet
+      description: |
+        Retorna todos os agendamentos de um pet específico.
+        
+        **Requer papel**: `operator` ou `admin`
+      tags:
+        - Pets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de agendamentos do pet
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Token JWT ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
         '404':
           description: Pet não encontrado
           content:
@@ -226,6 +1099,22 @@ paths:
                 $ref: '#/components/schemas/Error'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtido via Identity Provider (IdP).
+        
+        **Claims requeridos**:
+        - `iss` (issuer): Emissor do token
+        - `aud` (audience): Audi&ecirc;ncia do token
+        - `exp` (expiration): Data de expira&ccedil;&atilde;o
+        - `nbf` (not before): Token n&atilde;o v&aacute;lido antes desta data
+        - `sub` (subject): ID do usu&aacute;rio
+        - `roles`: Array de pap&eacute;is (admin, operator, user)
+
   schemas:
     Pet:
       type: object
@@ -240,7 +1129,7 @@ components:
         petId:
           type: string
           format: uuid
-          description: Identificador único do pet
+          description: Identificador &uacute;nico do pet
           example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
         nome:
           type: string
@@ -259,7 +1148,7 @@ components:
           example: 3
         raca:
           type: string
-          description: Raça do pet
+          description: Ra&ccedil;a do pet
           example: "Labrador"
         peso:
           type: number
@@ -268,94 +1157,120 @@ components:
           example: 25.5
         medicacoes:
           type: string
-          description: Medicações que o pet toma
+          description: Medica&ccedil;&otilde;es que o pet toma
           example: "Antipulgas mensais"
         informacoes:
           type: string
-          description: Informações adicionais sobre o pet
-          example: "Cachorro muito amigável"
+          description: Informa&ccedil;&otilde;es adicionais sobre o pet
+          example: "Cachorro muito amig&aacute;vel"
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID do dono do pet
+          example: "7b3e5c1a-9d2f-4e8b-a1c3-5f6d8e9a0b1c"
         createdAt:
           type: string
           format: date-time
-          description: Data e hora de criação do registro
+          description: Data e hora de cria&ccedil;&atilde;o do registro
           example: "2025-11-26T21:00:17.414Z"
 
-    CreatePetRequest:
+    Owner:
       type: object
       required:
+        - ownerId
         - nome
-        - idade
-        - raca
-        - peso
+        - email
+        - createdAt
       properties:
+        ownerId:
+          type: string
+          format: uuid
+          description: Identificador &uacute;nico do dono
+          example: "7b3e5c1a-9d2f-4e8b-a1c3-5f6d8e9a0b1c"
         nome:
           type: string
           minLength: 1
           maxLength: 100
-          description: Nome do pet
-          example: "Mia"
-        foto:
+          description: Nome do dono
+          example: "Jo&atilde;o Silva"
+        email:
           type: string
-          description: URL da foto do pet
-          example: "https://example.com/mia.jpg"
-        idade:
-          type: number
-          minimum: 0
-          description: Idade do pet em anos
-          example: 2
-        raca:
+          format: email
+          description: E-mail do dono
+          example: "joao.silva@email.com"
+        telefone:
           type: string
-          description: Raça do pet
-          example: "Siamês"
-        peso:
-          type: number
-          minimum: 0
-          description: Peso do pet em kg
-          example: 4.5
-        medicacoes:
+          description: Telefone do dono
+          example: "+55 11 98765-4321"
+        cpf:
           type: string
-          description: Medicações que o pet toma
-          example: "Vacina anual"
-        informacoes:
+          description: CPF do dono
+          example: "123.456.789-00"
+        endereco:
           type: string
-          description: Informações adicionais sobre o pet
-          example: "Gata muito calma"
+          description: Endere&ccedil;o do dono
+          example: "Rua das Flores, 123 - S&atilde;o Paulo/SP"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora de cria&ccedil;&atilde;o
+          example: "2025-11-26T21:00:17.414Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da &uacute;ltima atualiza&ccedil;&atilde;o
+          example: "2025-11-26T21:30:00.000Z"
 
-    UpdatePetRequest:
+    Appointment:
       type: object
+      required:
+        - appointmentId
+        - petId
+        - ownerId
+        - dataHora
+        - status
+        - createdAt
       properties:
-        nome:
+        appointmentId:
           type: string
-          minLength: 1
-          maxLength: 100
-          description: Nome do pet
-          example: "Rex"
-        foto:
+          format: uuid
+          description: Identificador &uacute;nico do agendamento
+          example: "3a7c9d2e-5f1b-4c8a-9e3d-7b6f0a1c2d3e"
+        petId:
           type: string
-          description: URL da foto do pet
-          example: "https://example.com/rex-updated.jpg"
-        idade:
-          type: number
-          minimum: 0
-          description: Idade do pet em anos
-          example: 4
-        raca:
+          format: uuid
+          description: ID do pet agendado
+          example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+        ownerId:
           type: string
-          description: Raça do pet
-          example: "Labrador Retriever"
-        peso:
-          type: number
-          minimum: 0
-          description: Peso do pet em kg
-          example: 27.0
-        medicacoes:
+          format: uuid
+          description: ID do dono
+          example: "7b3e5c1a-9d2f-4e8b-a1c3-5f6d8e9a0b1c"
+        dataHora:
           type: string
-          description: Medicações que o pet toma
-          example: "Antipulgas e vermífugo"
-        informacoes:
+          format: date-time
+          description: Data e hora do agendamento (deve ser futura)
+          example: "2025-12-01T14:00:00.000Z"
+        status:
           type: string
-          description: Informações adicionais sobre o pet
-          example: "Muito amigável e ativo"
+          enum: [pendente, confirmado, cancelado]
+          description: Status do agendamento
+          example: "pendente"
+        observacoes:
+          type: string
+          description: Observa&ccedil;&otilde;es sobre o agendamento
+          example: "Consulta de rotina + vacina"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora de cria&ccedil;&atilde;o
+          example: "2025-11-26T21:00:17.414Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da &uacute;ltima atualiza&ccedil;&atilde;o
+          example: "2025-11-26T21:30:00.000Z"
 
     Error:
       type: object
@@ -365,13 +1280,37 @@ components:
         error:
           type: string
           description: Mensagem de erro
-          example: "Invalid input data"
+          examples:
+            - "Invalid input data"
+            - "Unauthorized"
+            - "Forbidden"
+            - "Not found"
         details:
           type: string
           description: Detalhes adicionais sobre o erro
           example: "The nome field is required"
 
+    UnauthorizedError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Unauthorized"
+          description: Token ausente ou inv&aacute;lido
+
+    ForbiddenError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Forbidden - you can only access your own resources"
+          description: Usu&aacute;rio sem permiss&atilde;o para acessar este recurso
+
 tags:
   - name: Pets
-    description: Operações relacionadas aos pets
+    description: Opera&ccedil;&otilde;es relacionadas aos pets
+  - name: Owners
+    description: Opera&ccedil;&otilde;es relacionadas aos donos de pets (apenas admin)
+  - name: Appointments
+    description: Opera&ccedil;&otilde;es relacionadas aos agendamentos
 

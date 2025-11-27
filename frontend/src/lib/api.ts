@@ -7,6 +7,37 @@ export interface User {
   role: string;
 }
 
+export interface Pet {
+  petId: string;
+  nome: string;
+  foto?: string;
+  idade: number;
+  raca: string;
+  peso: number;
+  medicacoes?: string;
+  informacoes?: string;
+  ownerId?: string | null;
+}
+
+export interface Owner {
+  ownerId: string;
+  nome: string;
+  email: string;
+  telefone?: string;
+  endereco?: string;
+}
+
+export interface Appointment {
+  appointmentId: string;
+  petId: string;
+  ownerId: string;
+  data: string;
+  hora: string;
+  tipo: string;
+  status: 'pendente' | 'confirmado' | 'cancelado';
+  observacoes?: string;
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -60,6 +91,93 @@ class ApiClient {
 
   async deleteUser(id: string): Promise<void> {
     return this.request<void>(`/api/users/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Pets
+  async getPets(): Promise<Pet[]> {
+    return this.request<Pet[]>('/api/v1/pets');
+  }
+
+  async getPet(id: string): Promise<Pet> {
+    return this.request<Pet>(`/api/v1/pets/${id}`);
+  }
+
+  async createPet(pet: Omit<Pet, 'petId'>): Promise<Pet> {
+    return this.request<Pet>('/api/v1/pets', {
+      method: 'POST',
+      body: JSON.stringify(pet),
+    });
+  }
+
+  async updatePet(id: string, pet: Partial<Pet>): Promise<Pet> {
+    return this.request<Pet>(`/api/v1/pets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(pet),
+    });
+  }
+
+  async deletePet(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/pets/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Owners
+  async getOwners(): Promise<Owner[]> {
+    return this.request<Owner[]>('/api/v1/owners');
+  }
+
+  async getOwner(id: string): Promise<Owner> {
+    return this.request<Owner>(`/api/v1/owners/${id}`);
+  }
+
+  async createOwner(owner: Omit<Owner, 'ownerId'>): Promise<Owner> {
+    return this.request<Owner>('/api/v1/owners', {
+      method: 'POST',
+      body: JSON.stringify(owner),
+    });
+  }
+
+  async updateOwner(id: string, owner: Partial<Owner>): Promise<Owner> {
+    return this.request<Owner>(`/api/v1/owners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(owner),
+    });
+  }
+
+  async deleteOwner(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/owners/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Appointments
+  async getAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/api/v1/appointments');
+  }
+
+  async getAppointment(id: string): Promise<Appointment> {
+    return this.request<Appointment>(`/api/v1/appointments/${id}`);
+  }
+
+  async createAppointment(appointment: Omit<Appointment, 'appointmentId'>): Promise<Appointment> {
+    return this.request<Appointment>('/api/v1/appointments', {
+      method: 'POST',
+      body: JSON.stringify(appointment),
+    });
+  }
+
+  async updateAppointment(id: string, appointment: Partial<Appointment>): Promise<Appointment> {
+    return this.request<Appointment>(`/api/v1/appointments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(appointment),
+    });
+  }
+
+  async deleteAppointment(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/appointments/${id}`, {
       method: 'DELETE',
     });
   }

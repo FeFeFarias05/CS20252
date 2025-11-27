@@ -1,16 +1,25 @@
 import { Request, Response } from 'express';
 import { dynamoDBService } from '../../lib/dynamodb';
-import { requireOperator } from '../../lib/auth/rbac';
+import { requireOperator, getAuthInfo, isAdmin } from '../../lib/auth/rbac';
 
 
 export async function GET(req: Request, res: Response) {
   try {
+    const auth = await getAuthInfo(req);
+    
     const page = req.query.page as string || '1';
     const limit = req.query.limit as string || '10';
     const ageGroup = req.query.ageGroup as string || undefined;
     const name = req.query.name as string || undefined;
 
     const result = await dynamoDBService.listPets({ page: Number(page), limit: Number(limit), ageGroup, name });
+    
+    // Filter by ownerId if not admin
+    if (!isAdmin(auth) && auth?.sub) {
+      result.items = result.items.filter(pet => pet.ownerId === auth.sub);
+      result.total = result.items.length;
+    }
+    
     return res.json(result);
   } catch (error) {
     console.error('Error listing pets:', error);
@@ -24,10 +33,19 @@ export async function POST(req: Request, res: Response) {
   if (authCheck) return authCheck;
 
   try {
+    const auth = await getAuthInfo(req);
     const { nome, foto, idade, raca, peso, medicacoes, informacoes, ownerId } = req.body;
+    
     if (!nome || idade === undefined || !raca || peso === undefined) {
       return res.status(400).json({ error: 'nome, idade, raca, and peso are required' });
     }
+
+    // Non-admin users can only create pets for themselves
+    let finalOwnerId = ownerId;
+    if (!isAdmin(auth)) {
+      finalOwnerId = auth?.sub || null;
+    }
+
     const pet = await dynamoDBService.createPet({ 
       nome, 
       foto: foto || '', 
@@ -36,7 +54,7 @@ export async function POST(req: Request, res: Response) {
       peso, 
       medicacoes: medicacoes || '', 
       informacoes: informacoes || '',
-      ownerId
+      ownerId: finalOwnerId
     });
     return res.status(201).json(pet);
   } catch (err) {
@@ -87,6 +105,12 @@ export async function DELETE(req: Request, res: Response) {
     
     if (!id) {
       return res.status(400).json({ error: 'Pet ID is required' });
+    }
+
+    // Check if pet can be deleted
+    const validationResult = await dynamoDBService.canDeletePet(id);
+    if (!validationResult.canDelete) {
+      return res.status(409).json({ error: validationResult.reason });
     }
 
     await dynamoDBService.deletePet(id);

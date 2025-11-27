@@ -1,36 +1,102 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { dynamoDBService } from '@/lib/dynamodb';
-import { requireOperator } from '@/lib/auth/rbac';
+import { Request, Response } from 'express';
+import { dynamoDBService } from '../../../lib/dynamodb';
+import { requireOperator, getAuthInfo, isAdmin } from '../../../lib/auth/rbac';
 
-
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const authCheck = await requireOperator(req);
-  if ((authCheck as any)?.status) return authCheck;
-
+export async function GET(req: Request, res: Response) {
   try {
-    const updates = await req.json() as any;
-    const updated = await dynamoDBService.updatePet(params.id, updates);
-    return updated
-      ? NextResponse.json(updated)
-      : NextResponse.json({ error: 'not found' }, { status: 404 });
-  } catch (error) {
-    console.error('Error updating pet:', error);
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
+    const auth = await getAuthInfo(req);
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Pet ID is required' });
+    }
+
+    const pet = await dynamoDBService.getPetById(id);
+    
+    if (!pet) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    // Check ownership
+    if (!isAdmin(auth) && pet.ownerId !== auth?.sub) {
+      return res.status(403).json({ error: 'Forbidden - you can only access your own pets' });
+    }
+
+    return res.json(pet);
+  } catch (err) {
+    console.error('Error getting pet:', err);
+    return res.status(500).json({ error: 'internal' });
   }
 }
 
-
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, res: Response) {
   const authCheck = await requireOperator(req);
-  if ((authCheck as any)?.status) return authCheck;
+  if (authCheck) return authCheck;
 
   try {
-    const pet = await dynamoDBService.getPetById(params.id);
-    if (!pet) return NextResponse.json({ error: 'not found' }, { status: 404 });
-    await dynamoDBService.deletePet(params.id);
-    return new NextResponse(null, { status: 204 });
+    const auth = await getAuthInfo(req);
+    const { id } = req.params;
+    const updates = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Pet ID is required' });
+    }
+
+    // Check ownership before update
+    const pet = await dynamoDBService.getPetById(id);
+    if (!pet) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    if (!isAdmin(auth) && pet.ownerId !== auth?.sub) {
+      return res.status(403).json({ error: 'Forbidden - you can only update your own pets' });
+    }
+
+    const updated = await dynamoDBService.updatePet(id, updates);
+    
+    if (!updated) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    return res.json(updated);
+  } catch (error) {
+    console.error('Error updating pet:', error);
+    return res.status(500).json({ error: 'internal' });
+  }
+}
+
+export async function DELETE(req: Request, res: Response) {
+  const authCheck = await requireOperator(req);
+  if (authCheck) return authCheck;
+
+  try {
+    const auth = await getAuthInfo(req);
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Pet ID is required' });
+    }
+
+    // Check ownership before delete
+    const pet = await dynamoDBService.getPetById(id);
+    if (!pet) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    if (!isAdmin(auth) && pet.ownerId !== auth?.sub) {
+      return res.status(403).json({ error: 'Forbidden - you can only delete your own pets' });
+    }
+
+    // Check if pet can be deleted
+    const validationResult = await dynamoDBService.canDeletePet(id);
+    if (!validationResult.canDelete) {
+      return res.status(409).json({ error: validationResult.reason });
+    }
+
+    await dynamoDBService.deletePet(id);
+    return res.status(204).send();
   } catch (error) {
     console.error('Error deleting pet:', error);
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
+    return res.status(500).json({ error: 'internal' });
   }
 }

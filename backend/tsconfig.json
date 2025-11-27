@@ -21,9 +21,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "src/lib/auth/rbac.ts",
-    "src/lib/auth/withAuth.ts",
-    "src/testUtils/**/*",
     "src/**/*.test.ts",
     "src/__tests__/**/*"
   ]
