@@ -1,4 +1,3 @@
-import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 import { URL } from 'url';
 
 const JWKS_URI = process.env.JWKS_URI;
@@ -9,18 +8,22 @@ if (!JWKS_URI || !JWT_ISSUER || !JWT_AUDIENCE) {
   console.warn('JWT_ISSUER, JWT_AUDIENCE or JWKS_URI not configured.');
 }
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let jwks: any = null;
 
-function getJwks() {
-  if (!jwks) jwks = createRemoteJWKSet(new URL(JWKS_URI!));
+async function getJwks() {
+  if (!jwks) {
+    const jose = await import('jose');
+    jwks = jose.createRemoteJWKSet(new URL(JWKS_URI!));
+  }
   return jwks;
 }
 
-export async function verifyJWT(token: string): Promise<JWTPayload> {
+export async function verifyJWT(token: string): Promise<any> {
   if (!token) throw new Error('Token missing');
 
   try {
-    const { payload } = await jwtVerify(token, getJwks(), {
+    const jose = await import('jose');
+    const { payload } = await jose.jwtVerify(token, await getJwks(), {
       issuer: JWT_ISSUER!,
       audience: JWT_AUDIENCE!,
     } as any);

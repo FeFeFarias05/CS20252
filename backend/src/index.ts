@@ -74,7 +74,7 @@ app.get('/health', (req, res) => {
 
 // Iniciar servidor apenas se não estiver em ambiente de teste
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend rodando na porta ${PORT}`);
   });
 }
