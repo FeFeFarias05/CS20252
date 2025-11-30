@@ -61,26 +61,7 @@ resource "aws_instance" "app_instance" {
   instance_type          = "t2.micro"
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.allow_http.id]
-  iam_instance_profile   = "LabInstanceProfile" # mantém como na 1ª versão
-
-  user_data = <<-EOF
-    #!/bin/bash
-    set -e
-
-    apt update -y
-    apt install -y docker.io
-    systemctl enable docker
-    systemctl start docker
-
-    docker pull fernetest/cs20252:latest
-
-    # Sobe o container
-    docker run -d -p 3000:3000 \
-      -e AWS_REGION=${var.aws_region} \
-      -e DYNAMODB_TABLE_NAME=${var.table_name} \
-      -e NODE_ENV=production \
-      fernetest/cs20252:latest
-  EOF
+  iam_instance_profile   = "LabInstanceProfile" 
 
   tags = { Name = "cs20252AF" }
 }
