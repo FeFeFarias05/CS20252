@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const existingUsers = await dynamoDBService.getAllClients();
-    const emailExists = existingUsers.some(user => user.email === email);
+    const emailExists = existingUsers.items.some(user => user.email === email);
     
     if (emailExists) {
       return NextResponse.json(

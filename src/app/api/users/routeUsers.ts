@@ -5,7 +5,7 @@ import { dynamoDBService } from '@/lib/dynamodb';
 export async function GET() {
   try {
     const clients = await dynamoDBService.getAllClients();
-    const sortedClients = clients.sort((a, b) => 
+    const sortedClients = clients.items.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     return NextResponse.json(sortedClients);
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     const existingClients = await dynamoDBService.getAllClients();
-    const emailExists = existingClients.some(client => client.email === email);
+    const emailExists = existingClients.items.some(client => client.email === email);
     
     if (emailExists) {
       return NextResponse.json(
