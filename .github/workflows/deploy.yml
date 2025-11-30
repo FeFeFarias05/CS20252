@@ -8,7 +8,7 @@ on:
       - feVersaoFinal
 
 jobs:
-  deploy-ecr:
+  deploy:
     runs-on: ubuntu-latest
     
     permissions:
