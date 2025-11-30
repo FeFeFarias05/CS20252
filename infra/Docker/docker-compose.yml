@@ -39,4 +39,22 @@ services:
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
     volumes:
       - ./dynamodb_data:/home/dynamodblocal/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  init-db:
+    image: amazon/aws-cli:latest
+    depends_on:
+      dynamodb:
+        condition: service_healthy
+    volumes:
+      - ./startDynamodb.sh:/startDynamodb.sh
+    environment:
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: ["/bin/bash", "/startDynamodb.sh"]
   
