@@ -117,8 +117,8 @@ export async function DELETE(
     }
 
     // Verificar se o pet tem appointments
-    const appointments = await dynamoDBService.getAppointmentsByPetId(params.id);
-    if (appointments.length > 0) {
+    const appointmentsResult = await dynamoDBService.getAppointmentsByPetId(params.id);
+    if (appointmentsResult.items.length > 0) {
       return NextResponse.json(
         { error: 'Cannot delete pet with appointments. Delete appointments first.' },
         { status: 409 }

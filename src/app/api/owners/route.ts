@@ -14,11 +14,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const owners = await dynamoDBService.getAllOwners();
-    const sortedOwners = owners.sort(
+    const { searchParams } = new URL(req.url);
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    const result = await dynamoDBService.getAllOwners({ limit, offset });
+    const sortedItems = result.items.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    return NextResponse.json(sortedOwners);
+    
+    return NextResponse.json({
+      items: sortedItems,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
+      hasMore: result.hasMore
+    });
   } catch (error) {
     console.error('Error fetching owners:', error);
     return NextResponse.json(
@@ -50,8 +61,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar se o email já existe
-    const existingOwners = await dynamoDBService.getAllOwners();
-    const emailExists = existingOwners.some(owner => owner.email === email);
+    const existingOwnersResult = await dynamoDBService.getAllOwners();
+    const emailExists = existingOwnersResult.items.some(owner => owner.email === email);
 
     if (emailExists) {
       return NextResponse.json(

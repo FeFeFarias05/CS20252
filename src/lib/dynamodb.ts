@@ -132,11 +132,36 @@ export interface Appointment {
   createdAt: string;
 }
 
+export interface PaginationParams {
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 export class DynamoDBService {
-  async getAllClients(): Promise<Client[]> {
+  async getAllClients(pagination?: PaginationParams): Promise<PaginatedResponse<Client>> {
     const command = new ScanCommand({ TableName: TABLE_NAME });
     const response = await dynamodb.send(command);
-    return (response.Items as Client[]) || [];
+    const allItems = (response.Items as Client[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
   async createClient(
@@ -205,10 +230,22 @@ export class DynamoDBService {
   }
 
   // ========== OWNER METHODS ==========
-  async getAllOwners(): Promise<Owner[]> {
+  async getAllOwners(pagination?: PaginationParams): Promise<PaginatedResponse<Owner>> {
     const command = new ScanCommand({ TableName: OWNER_TABLE_NAME });
     const response = await dynamodb.send(command);
-    return (response.Items as Owner[]) || [];
+    const allItems = (response.Items as Owner[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
   async createOwner(owner: Omit<Owner, "ownerId" | "createdAt">): Promise<Owner> {
@@ -275,13 +312,25 @@ export class DynamoDBService {
   }
 
   // ========== PET METHODS ==========
-  async getAllPets(): Promise<Pet[]> {
+  async getAllPets(pagination?: PaginationParams): Promise<PaginatedResponse<Pet>> {
     const command = new ScanCommand({ TableName: PET_TABLE_NAME });
     const response = await dynamodb.send(command);
-    return (response.Items as Pet[]) || [];
+    const allItems = (response.Items as Pet[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
-  async getPetsByOwnerId(ownerId: string): Promise<Pet[]> {
+  async getPetsByOwnerId(ownerId: string, pagination?: PaginationParams): Promise<PaginatedResponse<Pet>> {
     const command = new ScanCommand({
       TableName: PET_TABLE_NAME,
       FilterExpression: "ownerId = :ownerId",
@@ -289,7 +338,19 @@ export class DynamoDBService {
     });
 
     const response = await dynamodb.send(command);
-    return (response.Items as Pet[]) || [];
+    const allItems = (response.Items as Pet[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
   async createPet(pet: Omit<Pet, "petId" | "createdAt">): Promise<Pet> {
@@ -356,13 +417,25 @@ export class DynamoDBService {
   }
 
   // ========== APPOINTMENT METHODS ==========
-  async getAllAppointments(): Promise<Appointment[]> {
+  async getAllAppointments(pagination?: PaginationParams): Promise<PaginatedResponse<Appointment>> {
     const command = new ScanCommand({ TableName: APPOINTMENT_TABLE_NAME });
     const response = await dynamodb.send(command);
-    return (response.Items as Appointment[]) || [];
+    const allItems = (response.Items as Appointment[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
-  async getAppointmentsByPetId(petId: string): Promise<Appointment[]> {
+  async getAppointmentsByPetId(petId: string, pagination?: PaginationParams): Promise<PaginatedResponse<Appointment>> {
     const command = new ScanCommand({
       TableName: APPOINTMENT_TABLE_NAME,
       FilterExpression: "petId = :petId",
@@ -370,10 +443,22 @@ export class DynamoDBService {
     });
 
     const response = await dynamodb.send(command);
-    return (response.Items as Appointment[]) || [];
+    const allItems = (response.Items as Appointment[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
-  async getAppointmentsByOwnerId(ownerId: string): Promise<Appointment[]> {
+  async getAppointmentsByOwnerId(ownerId: string, pagination?: PaginationParams): Promise<PaginatedResponse<Appointment>> {
     const command = new ScanCommand({
       TableName: APPOINTMENT_TABLE_NAME,
       FilterExpression: "ownerId = :ownerId",
@@ -381,10 +466,22 @@ export class DynamoDBService {
     });
 
     const response = await dynamodb.send(command);
-    return (response.Items as Appointment[]) || [];
+    const allItems = (response.Items as Appointment[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
-  async getAppointmentsByDate(date: string): Promise<Appointment[]> {
+  async getAppointmentsByDate(date: string, pagination?: PaginationParams): Promise<PaginatedResponse<Appointment>> {
     const command = new ScanCommand({
       TableName: APPOINTMENT_TABLE_NAME,
       FilterExpression: "#d = :date",
@@ -393,7 +490,19 @@ export class DynamoDBService {
     });
 
     const response = await dynamodb.send(command);
-    return (response.Items as Appointment[]) || [];
+    const allItems = (response.Items as Appointment[]) || [];
+    
+    const limit = pagination?.limit || 10;
+    const offset = pagination?.offset || 0;
+    const items = allItems.slice(offset, offset + limit);
+    
+    return {
+      items,
+      total: allItems.length,
+      limit,
+      offset,
+      hasMore: offset + limit < allItems.length
+    };
   }
 
   async createAppointment(

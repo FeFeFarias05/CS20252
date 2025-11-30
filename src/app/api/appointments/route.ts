@@ -9,6 +9,8 @@ import { requireAuth } from '@/lib/auth/withAuth';
  *   - ?petId=xxx para filtrar por pet
  *   - ?ownerId=xxx para filtrar por dono
  *   - ?date=YYYY-MM-DD para filtrar por data
+ *   - ?limit=10 para limitar resultados (padrão: 10)
+ *   - ?offset=0 para paginação (padrão: 0)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -22,20 +24,22 @@ export async function GET(req: NextRequest) {
     const petId = searchParams.get('petId');
     const ownerId = searchParams.get('ownerId');
     const date = searchParams.get('date');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
-    let appointments;
+    let result;
     
     if (petId) {
-      appointments = await dynamoDBService.getAppointmentsByPetId(petId);
+      result = await dynamoDBService.getAppointmentsByPetId(petId, { limit, offset });
     } else if (ownerId) {
-      appointments = await dynamoDBService.getAppointmentsByOwnerId(ownerId);
+      result = await dynamoDBService.getAppointmentsByOwnerId(ownerId, { limit, offset });
     } else if (date) {
-      appointments = await dynamoDBService.getAppointmentsByDate(date);
+      result = await dynamoDBService.getAppointmentsByDate(date, { limit, offset });
     } else {
-      appointments = await dynamoDBService.getAllAppointments();
+      result = await dynamoDBService.getAllAppointments({ limit, offset });
     }
 
-    const sortedAppointments = appointments.sort(
+    const sortedItems = result.items.sort(
       (a, b) => {
         // Ordenar por data e hora
         const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
@@ -44,7 +48,13 @@ export async function GET(req: NextRequest) {
       }
     );
 
-    return NextResponse.json(sortedAppointments);
+    return NextResponse.json({
+      items: sortedItems,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
+      hasMore: result.hasMore
+    });
   } catch (error) {
     console.error('Error fetching appointments:', error);
     return NextResponse.json(

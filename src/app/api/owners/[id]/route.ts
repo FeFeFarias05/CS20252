@@ -64,8 +64,8 @@ export async function PUT(
 
     // Se está atualizando o email, verificar unicidade
     if (updates.email && updates.email !== existingOwner.email) {
-      const allOwners = await dynamoDBService.getAllOwners();
-      const emailExists = allOwners.some(
+      const allOwnersResult = await dynamoDBService.getAllOwners();
+      const emailExists = allOwnersResult.items.some(
         owner => owner.email === updates.email && owner.ownerId !== params.id
       );
 
@@ -121,8 +121,8 @@ export async function DELETE(
     }
 
     // Verificar se o owner tem pets
-    const pets = await dynamoDBService.getPetsByOwnerId(params.id);
-    if (pets.length > 0) {
+    const petsResult = await dynamoDBService.getPetsByOwnerId(params.id);
+    if (petsResult.items.length > 0) {
       return NextResponse.json(
         { error: 'Cannot delete owner with pets. Delete pets first.' },
         { status: 409 }
