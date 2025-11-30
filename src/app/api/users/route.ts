@@ -10,8 +10,8 @@ export async function GET(req: NextRequest) {
   if (payload instanceof Response) return payload;
 
   try {
-    const users = await dynamoDBService.getAllClients();
-    const sortedUsers = users.sort(
+    const response = await dynamoDBService.getAllClients();
+    const sortedUsers = response.items.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     return NextResponse.json(sortedUsers);
