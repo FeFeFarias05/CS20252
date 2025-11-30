@@ -81,6 +81,48 @@ resource "aws_dynamodb_table" "client_table" {
   tags = { Name = var.table_name }
 }
 
+resource "aws_dynamodb_table" "owner_table" {
+  name         = "Owner"
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "ownerId"
+
+  attribute {
+    name = "ownerId"
+    type = "S"
+  }
+
+  tags = { Name = "Owner" }
+}
+
+resource "aws_dynamodb_table" "pet_table" {
+  name         = "Pet"
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "petId"
+
+  attribute {
+    name = "petId"
+    type = "S"
+  }
+
+  tags = { Name = "Pet" }
+}
+
+resource "aws_dynamodb_table" "appointment_table" {
+  name         = "Appointment"
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "appointmentId"
+
+  attribute {
+    name = "appointmentId"
+    type = "S"
+  }
+
+  tags = { Name = "Appointment" }
+}
+
 resource "aws_s3_bucket" "example_bucket" {
   bucket = var.bucket_name
 

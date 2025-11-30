@@ -86,12 +86,49 @@ if (isTest) {
 }
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "Client";
+const OWNER_TABLE_NAME = "Owner";
+const PET_TABLE_NAME = "Pet";
+const APPOINTMENT_TABLE_NAME = "Appointment";
 
 export interface Client {
   clientId: string;
   name: string;
   email: string;
   phone?: string;
+  createdAt: string;
+}
+
+export interface Owner {
+  ownerId: string;
+  name: string;
+  email: string;
+  phone: string;
+  address?: string;
+  createdAt: string;
+}
+
+export interface Pet {
+  petId: string;
+  ownerId: string;
+  name: string;
+  species: string; // cachorro, gato, etc
+  breed?: string;
+  birthDate?: string;
+  weight?: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Appointment {
+  appointmentId: string;
+  petId: string;
+  ownerId: string;
+  date: string;
+  time: string;
+  type: string; // consulta, vacina, banho, tosa, etc
+  status: string; // agendado, confirmado, cancelado, concluído
+  veterinarian?: string;
+  notes?: string;
   createdAt: string;
 }
 
@@ -161,6 +198,263 @@ export class DynamoDBService {
     const command = new DeleteCommand({
       TableName: TABLE_NAME,
       Key: { clientId },
+    });
+
+    await dynamodb.send(command);
+    return true;
+  }
+
+  // ========== OWNER METHODS ==========
+  async getAllOwners(): Promise<Owner[]> {
+    const command = new ScanCommand({ TableName: OWNER_TABLE_NAME });
+    const response = await dynamodb.send(command);
+    return (response.Items as Owner[]) || [];
+  }
+
+  async createOwner(owner: Omit<Owner, "ownerId" | "createdAt">): Promise<Owner> {
+    const newOwner: Owner = {
+      ownerId: crypto.randomUUID(),
+      ...owner,
+      createdAt: new Date().toISOString(),
+    };
+
+    const command = new PutCommand({
+      TableName: OWNER_TABLE_NAME,
+      Item: newOwner,
+    });
+
+    await dynamodb.send(command);
+    return newOwner;
+  }
+
+  async getOwnerById(ownerId: string): Promise<Owner | null> {
+    const command = new GetCommand({
+      TableName: OWNER_TABLE_NAME,
+      Key: { ownerId },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Item as Owner) || null;
+  }
+
+  async updateOwner(
+    ownerId: string,
+    updates: Partial<Omit<Owner, "ownerId" | "createdAt">>
+  ): Promise<Owner | null> {
+    const updateExpression = [];
+    const attributeValues: any = {};
+    const attributeNames: any = {};
+
+    for (const [key, value] of Object.entries(updates)) {
+      updateExpression.push(`#${key} = :${key}`);
+      attributeNames[`#${key}`] = key;
+      attributeValues[`:${key}`] = value;
+    }
+
+    const command = new UpdateCommand({
+      TableName: OWNER_TABLE_NAME,
+      Key: { ownerId },
+      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      ExpressionAttributeNames: attributeNames,
+      ExpressionAttributeValues: attributeValues,
+      ReturnValues: "ALL_NEW",
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Attributes as Owner) || null;
+  }
+
+  async deleteOwner(ownerId: string): Promise<boolean> {
+    const command = new DeleteCommand({
+      TableName: OWNER_TABLE_NAME,
+      Key: { ownerId },
+    });
+
+    await dynamodb.send(command);
+    return true;
+  }
+
+  // ========== PET METHODS ==========
+  async getAllPets(): Promise<Pet[]> {
+    const command = new ScanCommand({ TableName: PET_TABLE_NAME });
+    const response = await dynamodb.send(command);
+    return (response.Items as Pet[]) || [];
+  }
+
+  async getPetsByOwnerId(ownerId: string): Promise<Pet[]> {
+    const command = new ScanCommand({
+      TableName: PET_TABLE_NAME,
+      FilterExpression: "ownerId = :ownerId",
+      ExpressionAttributeValues: { ":ownerId": ownerId },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Items as Pet[]) || [];
+  }
+
+  async createPet(pet: Omit<Pet, "petId" | "createdAt">): Promise<Pet> {
+    const newPet: Pet = {
+      petId: crypto.randomUUID(),
+      ...pet,
+      createdAt: new Date().toISOString(),
+    };
+
+    const command = new PutCommand({
+      TableName: PET_TABLE_NAME,
+      Item: newPet,
+    });
+
+    await dynamodb.send(command);
+    return newPet;
+  }
+
+  async getPetById(petId: string): Promise<Pet | null> {
+    const command = new GetCommand({
+      TableName: PET_TABLE_NAME,
+      Key: { petId },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Item as Pet) || null;
+  }
+
+  async updatePet(
+    petId: string,
+    updates: Partial<Omit<Pet, "petId" | "createdAt">>
+  ): Promise<Pet | null> {
+    const updateExpression = [];
+    const attributeValues: any = {};
+    const attributeNames: any = {};
+
+    for (const [key, value] of Object.entries(updates)) {
+      updateExpression.push(`#${key} = :${key}`);
+      attributeNames[`#${key}`] = key;
+      attributeValues[`:${key}`] = value;
+    }
+
+    const command = new UpdateCommand({
+      TableName: PET_TABLE_NAME,
+      Key: { petId },
+      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      ExpressionAttributeNames: attributeNames,
+      ExpressionAttributeValues: attributeValues,
+      ReturnValues: "ALL_NEW",
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Attributes as Pet) || null;
+  }
+
+  async deletePet(petId: string): Promise<boolean> {
+    const command = new DeleteCommand({
+      TableName: PET_TABLE_NAME,
+      Key: { petId },
+    });
+
+    await dynamodb.send(command);
+    return true;
+  }
+
+  // ========== APPOINTMENT METHODS ==========
+  async getAllAppointments(): Promise<Appointment[]> {
+    const command = new ScanCommand({ TableName: APPOINTMENT_TABLE_NAME });
+    const response = await dynamodb.send(command);
+    return (response.Items as Appointment[]) || [];
+  }
+
+  async getAppointmentsByPetId(petId: string): Promise<Appointment[]> {
+    const command = new ScanCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      FilterExpression: "petId = :petId",
+      ExpressionAttributeValues: { ":petId": petId },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Items as Appointment[]) || [];
+  }
+
+  async getAppointmentsByOwnerId(ownerId: string): Promise<Appointment[]> {
+    const command = new ScanCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      FilterExpression: "ownerId = :ownerId",
+      ExpressionAttributeValues: { ":ownerId": ownerId },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Items as Appointment[]) || [];
+  }
+
+  async getAppointmentsByDate(date: string): Promise<Appointment[]> {
+    const command = new ScanCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      FilterExpression: "#d = :date",
+      ExpressionAttributeNames: { "#d": "date" },
+      ExpressionAttributeValues: { ":date": date },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Items as Appointment[]) || [];
+  }
+
+  async createAppointment(
+    appointment: Omit<Appointment, "appointmentId" | "createdAt">
+  ): Promise<Appointment> {
+    const newAppointment: Appointment = {
+      appointmentId: crypto.randomUUID(),
+      ...appointment,
+      createdAt: new Date().toISOString(),
+    };
+
+    const command = new PutCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      Item: newAppointment,
+    });
+
+    await dynamodb.send(command);
+    return newAppointment;
+  }
+
+  async getAppointmentById(appointmentId: string): Promise<Appointment | null> {
+    const command = new GetCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      Key: { appointmentId },
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Item as Appointment) || null;
+  }
+
+  async updateAppointment(
+    appointmentId: string,
+    updates: Partial<Omit<Appointment, "appointmentId" | "createdAt">>
+  ): Promise<Appointment | null> {
+    const updateExpression = [];
+    const attributeValues: any = {};
+    const attributeNames: any = {};
+
+    for (const [key, value] of Object.entries(updates)) {
+      updateExpression.push(`#${key} = :${key}`);
+      attributeNames[`#${key}`] = key;
+      attributeValues[`:${key}`] = value;
+    }
+
+    const command = new UpdateCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      Key: { appointmentId },
+      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      ExpressionAttributeNames: attributeNames,
+      ExpressionAttributeValues: attributeValues,
+      ReturnValues: "ALL_NEW",
+    });
+
+    const response = await dynamodb.send(command);
+    return (response.Attributes as Appointment) || null;
+  }
+
+  async deleteAppointment(appointmentId: string): Promise<boolean> {
+    const command = new DeleteCommand({
+      TableName: APPOINTMENT_TABLE_NAME,
+      Key: { appointmentId },
     });
 
     await dynamodb.send(command);
