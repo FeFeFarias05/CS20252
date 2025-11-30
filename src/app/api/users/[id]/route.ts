@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Check if email is being updated and already exists
     if (email) {
       const existingUsers = await dynamoDBService.getAllClients();
-      const emailTaken = existingUsers.some(
+      const emailTaken = existingUsers.items.some(
         user => user.email === email && user.clientId !== params.id
       );
       if (emailTaken) {
