@@ -1,3 +1,4 @@
+import { allowedTransitions, AppointmentStatus, canTransition } from "@/app/api/v1/appointments/stateMachine";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -125,11 +126,14 @@ export interface Appointment {
   ownerId: string;
   date: string;
   time: string;
-  type: string; // consulta, vacina, banho, tosa, etc
-  status: string; // agendado, confirmado, cancelado, concluído
+  type: string;
+  status: AppointmentStatus;
   veterinarian?: string;
   notes?: string;
   createdAt: string;
+  canceledAt?: string | null;
+  completedAt?: string | null;
+  confirmedAt?: string | null;
 }
 
 export interface PaginationParams {
@@ -534,31 +538,48 @@ export class DynamoDBService {
   }
 
   async updateAppointment(
-    appointmentId: string,
-    updates: Partial<Omit<Appointment, "appointmentId" | "createdAt">>
-  ): Promise<Appointment | null> {
-    const updateExpression = [];
-    const attributeValues: any = {};
-    const attributeNames: any = {};
+  appointmentId: string,
+  updates: Partial<Omit<Appointment, "appointmentId" | "createdAt">>
+): Promise<Appointment | null> {
 
-    for (const [key, value] of Object.entries(updates)) {
-      updateExpression.push(`#${key} = :${key}`);
-      attributeNames[`#${key}`] = key;
-      attributeValues[`:${key}`] = value;
+  const existing = await this.getAppointmentById(appointmentId);
+  if (!existing) return null;
+
+  // 🔥 Se está tentando mudar status, validar transição permitida
+  if (updates.status && updates.status !== existing.status) {
+    const current = existing.status as AppointmentStatus;
+    const next = updates.status as AppointmentStatus;
+
+    if (!canTransition(current, next)) {
+      throw new Error(
+        `Transição de estado inválida: ${current} → ${next}. ` +
+        `Permitidos: ${allowedTransitions[current].join(", ") || "nenhum"}`
+      );
     }
-
-    const command = new UpdateCommand({
-      TableName: APPOINTMENT_TABLE_NAME,
-      Key: { appointmentId },
-      UpdateExpression: `SET ${updateExpression.join(", ")}`,
-      ExpressionAttributeNames: attributeNames,
-      ExpressionAttributeValues: attributeValues,
-      ReturnValues: "ALL_NEW",
-    });
-
-    const response = await dynamodb.send(command);
-    return (response.Attributes as Appointment) || null;
   }
+
+  const updateExpression = [];
+  const attributeValues: any = {};
+  const attributeNames: any = {};
+
+  for (const [key, value] of Object.entries(updates)) {
+    updateExpression.push(`#${key} = :${key}`);
+    attributeNames[`#${key}`] = key;
+    attributeValues[`:${key}`] = value;
+  }
+
+  const command = new UpdateCommand({
+    TableName: APPOINTMENT_TABLE_NAME,
+    Key: { appointmentId },
+    UpdateExpression: `SET ${updateExpression.join(", ")}`,
+    ExpressionAttributeNames: attributeNames,
+    ExpressionAttributeValues: attributeValues,
+    ReturnValues: "ALL_NEW",
+  });
+
+  const response = await dynamodb.send(command);
+  return (response.Attributes as Appointment) || null;
+}
 
   async deleteAppointment(appointmentId: string): Promise<boolean> {
     const command = new DeleteCommand({
