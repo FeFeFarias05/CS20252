@@ -3,7 +3,7 @@ import { dynamoDBService } from '@/lib/dynamodb';
 import { requireSelfOrAdmin, requireAdmin } from '@/lib/auth/rbac';
 
 /**
- * GET `/api/users/[id]` – fetch a single user by id.
+ * GET `/api/users/[id]` – pesquisa um usuário pelo id.
  */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const payload = await requireSelfOrAdmin(req, params.id);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 /**
- * PUT `/api/users/[id]` – update a user's name or email.
+ * PUT `/api/users/[id]` – atualiza nome e/ou email do usuário.
  */
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const payload = await requireSelfOrAdmin(req, params.id);
@@ -54,7 +54,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 /**
- * DELETE `/api/users/[id]` – remove a user from the database.
+ * DELETE `/api/users/[id]` – remove um usuário pelo id.
  */
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const payload = await requireAdmin(req);
