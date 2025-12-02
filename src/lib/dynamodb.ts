@@ -1,4 +1,4 @@
-import { allowedTransitions, AppointmentStatus, canTransition } from "@/app/api/v1/appointments/stateMachine";
+import { allowedTransitions, AppointmentStatus, canTransition } from "src/app/api/v1/appointments/stateMachine";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
