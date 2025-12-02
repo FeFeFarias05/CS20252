@@ -53,7 +53,6 @@ export async function PUT(
   try {
     const updates = await req.json();
 
-    // Verificar se o pet existe
     const existingPet = await dynamoDBService.getPetById(params.id);
     if (!existingPet) {
       return NextResponse.json(
@@ -62,7 +61,6 @@ export async function PUT(
       );
     }
 
-    // Se está atualizando o ownerId, verificar se o novo owner existe
     if (updates.ownerId && updates.ownerId !== existingPet.ownerId) {
       const owner = await dynamoDBService.getOwnerById(updates.ownerId);
       if (!owner) {
@@ -107,7 +105,6 @@ export async function DELETE(
   }
 
   try {
-    // Verificar se o pet existe
     const pet = await dynamoDBService.getPetById(params.id);
     if (!pet) {
       return NextResponse.json(
@@ -116,7 +113,6 @@ export async function DELETE(
       );
     }
 
-    // Verificar se o pet tem appointments
     const appointmentsResult = await dynamoDBService.getAppointmentsByPetId(params.id);
     if (appointmentsResult.items.length > 0) {
       return NextResponse.json(

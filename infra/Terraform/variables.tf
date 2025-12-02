@@ -50,7 +50,6 @@ variable "cognito_logout_urls" {
   ]
 }
 
-# Somente para popular o .env gerado localmente
 variable "aws_access_key_id" {
   description = "AWS Access Key ID (usado apenas para gerar .env local)"
   type        = string

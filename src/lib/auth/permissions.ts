@@ -3,7 +3,7 @@ import type { JWTPayload } from 'jose';
 export type AuthInfo = {
   sub?: string;
   email?: string;
-  roles: string[]; // normalizado
+  roles: string[];
   raw: JWTPayload;
 };
 

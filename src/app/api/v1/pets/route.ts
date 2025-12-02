@@ -71,7 +71,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar se o owner existe
     const owner = await dynamoDBService.getOwnerById(ownerId);
     if (!owner) {
       return NextResponse.json(

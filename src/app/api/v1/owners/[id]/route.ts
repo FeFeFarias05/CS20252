@@ -53,7 +53,6 @@ export async function PUT(
   try {
     const updates = await req.json();
 
-    // Verificar se o owner existe
     const existingOwner = await dynamoDBService.getOwnerById(params.id);
     if (!existingOwner) {
       return NextResponse.json(
@@ -62,7 +61,6 @@ export async function PUT(
       );
     }
 
-    // Se está atualizando o email, verificar unicidade
     if (updates.email && updates.email !== existingOwner.email) {
       const allOwnersResult = await dynamoDBService.getAllOwners();
       const emailExists = allOwnersResult.items.some(
@@ -111,7 +109,6 @@ export async function DELETE(
   }
 
   try {
-    // Verificar se o owner existe
     const owner = await dynamoDBService.getOwnerById(params.id);
     if (!owner) {
       return NextResponse.json(
@@ -120,7 +117,6 @@ export async function DELETE(
       );
     }
 
-    // Verificar se o owner tem pets
     const petsResult = await dynamoDBService.getPetsByOwnerId(params.id);
     if (petsResult.items.length > 0) {
       return NextResponse.json(

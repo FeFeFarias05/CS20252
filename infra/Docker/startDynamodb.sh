@@ -8,7 +8,6 @@ DYNAMODB_ENDPOINT="http://dynamodb:8000"
 
 echo "Creating DynamoDB tables..."
 
-# Create Client table
 aws dynamodb create-table \
     --table-name Client \
     --attribute-definitions AttributeName=clientId,AttributeType=S \
@@ -19,7 +18,6 @@ aws dynamodb create-table \
     --no-cli-pager \
     2>/dev/null || echo "Table Client already exists"
 
-# Create Owner table
 aws dynamodb create-table \
     --table-name Owner \
     --attribute-definitions AttributeName=ownerId,AttributeType=S \
@@ -30,7 +28,6 @@ aws dynamodb create-table \
     --no-cli-pager \
     2>/dev/null || echo "Table Owner already exists"
 
-# Create Pet table
 aws dynamodb create-table \
     --table-name Pet \
     --attribute-definitions AttributeName=petId,AttributeType=S \
@@ -41,7 +38,6 @@ aws dynamodb create-table \
     --no-cli-pager \
     2>/dev/null || echo "Table Pet already exists"
 
-# Create Appointment table
 aws dynamodb create-table \
     --table-name Appointment \
     --attribute-definitions AttributeName=appointmentId,AttributeType=S \

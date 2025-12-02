@@ -772,9 +772,6 @@ components:
                 error: "internal"
 
   schemas:
-    # ------------------------
-    # Reutilizáveis
-    # ------------------------
     Error:
       type: object
       required:
@@ -807,7 +804,7 @@ components:
           example: true
 
     # ------------------------
-    # Users (admin) - similar ao exemplo inicial
+    # Users (admin)
     # ------------------------
     User:
       type: object
@@ -1093,7 +1090,7 @@ components:
                 $ref: '#/components/schemas/Pet'
 
     # ------------------------
-    # Appointments & state machine
+    # Appointments and state machine
     # ------------------------
     AppointmentStatus:
       type: string

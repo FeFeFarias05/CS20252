@@ -41,7 +41,6 @@ export async function GET(req: NextRequest) {
 
     const sortedItems = result.items.sort(
       (a, b) => {
-        // Ordenar por data e hora
         const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
         const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
         return dateTimeB - dateTimeA;
@@ -85,7 +84,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar se o pet existe
     const pet = await dynamoDBService.getPetById(petId);
     if (!pet) {
       return NextResponse.json(
@@ -94,7 +92,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar se o owner existe e é o dono do pet
     const owner = await dynamoDBService.getOwnerById(ownerId);
     if (!owner) {
       return NextResponse.json(

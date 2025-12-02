@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar se o email já existe
     const existingOwnersResult = await dynamoDBService.getAllOwners();
     const emailExists = existingOwnersResult.items.some(owner => owner.email === email);
 
