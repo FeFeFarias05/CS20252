@@ -1,72 +1,77 @@
 openapi: 3.0.3
 info:
-  title: Users API
-  description: API para gerenciamento de usuários - Sprint 0
+  title: Pet Clinic API
+  description: API para gerenciamento de Users, Clients, Owners, Pets e Appointments com máquina de estados.
   version: 1.0.0
   contact:
     name: Construção de Software PUCRS
     email: contato@exemplo.com
 
 servers:
-  - url: http://localhost:3000/api
+  - url: http://localhost:3000/api/v1
     description: Servidor de desenvolvimento local
-  - url: https://seu-app.herokuapp.com/api
+  - url: https://seu-app.herokuapp.com/api/v1
     description: Servidor de produção
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Users
+    description: Operações relacionadas aos usuários (admin / auth)
+  - name: Clients
+    description: Clientes (usuários do sistema)
+  - name: Owners
+    description: Donos de pets (pessoas físicas associadas a pets)
+  - name: Pets
+    description: Pets cadastrados na clínica
+  - name: Appointments
+    description: Agendamentos (inclui máquina de estados via events endpoint)
 
 paths:
   /users:
     get:
-      summary: Listar todos os usuários
-      description: Retorna uma lista de todos os usuários ordenados por data de criação (mais recentes primeiro)
-      tags:
-        - Users
+      tags: [Users]
+      summary: Listar todos os usuários (admin)
+      description: Retorna todos os usuários (ordenados por createdAt desc). Requer token de admin.
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
       responses:
         '200':
           description: Lista de usuários retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-              examples:
-                success:
-                  summary: Exemplo de resposta de sucesso
-                  value:
-                    - id: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
-                      name: "João Silva"
-                      email: "joao@example.com"
-                      createdAt: "2025-08-18T21:00:17.414Z"
-                      updatedAt: "2025-08-18T21:00:17.414Z"
+                $ref: '#/components/schemas/PaginatedResponseUsers'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                server_error:
-                  summary: Erro do servidor
-                  value:
-                    error: "internal"
-
+          $ref: '#/components/responses/InternalError'
     post:
-      summary: Criar um novo usuário
-      description: Cria um novo usuário no sistema
-      tags:
-        - Users
+      tags: [Users]
+      summary: Criar um novo usuário (admin)
+      description: Cria um novo usuário. Requer permissão de admin.
+      operationId: createUser
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateUserRequest'
-            examples:
-              valid_user:
-                summary: Exemplo de usuário válido
-                value:
-                  name: "Maria Santos"
-                  email: "maria@example.com"
       responses:
         '201':
           description: Usuário criado com sucesso
@@ -74,68 +79,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-              examples:
-                created_user:
-                  summary: Usuário criado
-                  value:
-                    id: "6e9f2a5f-5205-4b96-814f-626477f00a5d"
-                    name: "Maria Santos"
-                    email: "maria@example.com"
-                    createdAt: "2025-08-18T21:03:45.123Z"
-                    updatedAt: "2025-08-18T21:03:45.123Z"
         '400':
-          description: Dados de entrada inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                missing_fields:
-                  summary: Campos obrigatórios ausentes
-                  value:
-                    error: "name/email required"
-                invalid_email:
-                  summary: Email inválido
-                  value:
-                    error: "Invalid email format"
+          $ref: '#/components/responses/BadRequest'
         '409':
-          description: Email já está em uso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                duplicate_email:
-                  summary: Email duplicado
-                  value:
-                    error: "email must be unique"
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                server_error:
-                  summary: Erro do servidor
-                  value:
-                    error: "internal"
+          $ref: '#/components/responses/InternalError'
 
   /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
     get:
+      tags: [Users]
       summary: Buscar usuário por ID
-      description: Retorna um usuário específico pelo seu ID
-      tags:
-        - Users
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID único do usuário (UUID)
-          schema:
-            type: string
-            format: uuid
-            example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
+      operationId: getUserById
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Usuário encontrado
@@ -144,30 +110,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '404':
-          description: Usuário não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                not_found:
-                  summary: Usuário não encontrado
-                  value:
-                    error: "User not found"
-
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
     put:
+      tags: [Users]
       summary: Atualizar usuário
-      description: Atualiza os dados de um usuário existente
-      tags:
-        - Users
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID único do usuário (UUID)
-          schema:
-            type: string
-            format: uuid
+      operationId: updateUser
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -182,49 +135,680 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: Dados inválidos
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Users]
+      summary: Deletar usuário
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Usuário deletado com sucesso
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clients:
+    get:
+      tags: [Clients]
+      summary: Listar clientes
+      description: Lista clientes com paginação (ordenados por createdAt desc)
+      operationId: listClients
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponseClients'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Clients]
+      summary: Criar client
+      operationId: createClient
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClientRequest'
+      responses:
+        '201':
+          description: Client criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clients/{clientId}:
+    parameters:
+      - in: path
+        name: clientId
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Clients]
+      summary: Buscar client por ID
+      operationId: getClientById
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Client encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [Clients]
+      summary: Atualizar client
+      operationId: updateClient
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClientRequest'
+      responses:
+        '200':
+          description: Client atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Clients]
+      summary: Deletar client
+      operationId: deleteClient
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Client deletado com sucesso
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /owners:
+    get:
+      tags: [Owners]
+      summary: Listar owners
+      operationId: listOwners
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Lista de owners
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponseOwners'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Owners]
+      summary: Criar owner
+      operationId: createOwner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
+      responses:
+        '201':
+          description: Owner criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /owners/{ownerId}:
+    parameters:
+      - in: path
+        name: ownerId
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Owners]
+      summary: Buscar owner por ID
+      operationId: getOwnerById
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owner encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Owners]
+      summary: Atualizar owner
+      operationId: updateOwner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOwnerRequest'
+      responses:
+        '200':
+          description: Owner atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Owners]
+      summary: Deletar owner
+      operationId: deleteOwner
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owner deletado com sucesso
+        '409':
+          description: Não é permitido deletar owner com pets
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Usuário não encontrado
+          $ref: '#/components/responses/NotFound'
+
+  /pets:
+    get:
+      tags: [Pets]
+      summary: Listar pets
+      operationId: listPets
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: ownerId
+          schema:
+            type: string
+          description: Filtrar por ownerId
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Lista de pets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponsePets'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Pets]
+      summary: Criar pet
+      operationId: createPet
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePetRequest'
+      responses:
+        '201':
+          description: Pet criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Owner not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '409':
-          description: Email já está em uso
+          $ref: '#/components/responses/Conflict'
+
+  /pets/{petId}:
+    parameters:
+      - in: path
+        name: petId
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Pets]
+      summary: Buscar pet por ID
+      operationId: getPetById
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pet encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Pets]
+      summary: Atualizar pet
+      operationId: updatePet
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePetRequest'
+      responses:
+        '200':
+          description: Pet atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Pets]
+      summary: Deletar pet
+      operationId: deletePet
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pet deletado com sucesso
+        '409':
+          description: Não é permitido deletar pet com appointments
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
-    delete:
-      summary: Deletar usuário
-      description: Remove um usuário do sistema
-      tags:
-        - Users
+  /appointments:
+    get:
+      tags: [Appointments]
+      summary: Listar appointments
+      description: Filtrar por petId, ownerId, date; paginação via limit/offset
+      operationId: listAppointments
+      security:
+        - bearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID único do usuário (UUID)
+        - in: query
+          name: petId
           schema:
             type: string
-            format: uuid
+        - in: query
+          name: ownerId
+          schema:
+            type: string
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+            example: "2025-12-10"
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
       responses:
-        '204':
-          description: Usuário deletado com sucesso
+        '200':
+          description: Lista de appointments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponseAppointments'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Appointments]
+      summary: Criar appointment (agendar)
+      operationId: createAppointment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppointmentRequest'
+      responses:
+        '201':
+          description: Appointment criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
-          description: Usuário não encontrado
+          description: Pet or Owner not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /appointments/{appointmentId}:
+    parameters:
+      - in: path
+        name: appointmentId
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Appointments]
+      summary: Buscar appointment por ID
+      operationId: getAppointmentById
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Appointment encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Appointments]
+      summary: Atualizar appointment
+      operationId: updateAppointment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAppointmentRequest'
+      responses:
+        '200':
+          description: Appointment atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Appointments]
+      summary: Deletar appointment
+      operationId: deleteAppointment
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Appointment deletado com sucesso
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /appointments/{appointmentId}/events:
+    post:
+      tags: [Appointments]
+      summary: Enviar evento de state machine para um appointment
+      description: |
+        Envia um evento (confirmado, cancelado, completo) que será aplicado à state machine do appointment.
+        O backend deve validar a transição (usar applyTransition/canTransition) e retornar 400 se inválida.
+      operationId: appointmentEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: appointmentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentEventRequest'
+            examples:
+              confirm_example:
+                summary: Confirmar appointment
+                value:
+                  event: "confirmado"
+              cancel_example:
+                summary: Cancelar appointment
+                value:
+                  event: "cancelado"
+              complete_example:
+                summary: Marcar como completo
+                value:
+                  event: "completo"
+      responses:
+        '200':
+          description: Evento aplicado com sucesso e appointment atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Transição inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Acesso não autorizado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              value:
+                error: "Unauthorized"
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid:
+              value:
+                error: "Invalid input data"
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            not_found:
+              value:
+                error: "Not found"
+    Conflict:
+      description: Conflito (p.ex. recurso duplicado ou regra de negócio)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            conflict:
+              value:
+                error: "Conflict"
+    InternalError:
+      description: Erro interno do servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            server_error:
+              value:
+                error: "internal"
+
   schemas:
+    # ------------------------
+    # Reutilizáveis
+    # ------------------------
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "Invalid input data"
+        details:
+          type: string
+          example: "Campo X é obrigatório"
+
+    PaginatedResponseBase:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {}
+        total:
+          type: integer
+          example: 100
+        limit:
+          type: integer
+          example: 10
+        offset:
+          type: integer
+          example: 0
+        hasMore:
+          type: boolean
+          example: true
+
+    # ------------------------
+    # Users (admin) - similar ao exemplo inicial
+    # ------------------------
     User:
       type: object
       required:
@@ -237,29 +821,20 @@ components:
         id:
           type: string
           format: uuid
-          description: Identificador único do usuário
           example: "9ea6f22e-2c39-466a-b65f-e8fc1ae9aa01"
         name:
           type: string
-          minLength: 1
-          maxLength: 100
-          description: Nome completo do usuário
           example: "João Silva"
         email:
           type: string
           format: email
-          description: Endereço de email do usuário (único)
           example: "joao@example.com"
         createdAt:
           type: string
           format: date-time
-          description: Data e hora de criação do usuário
-          example: "2025-08-18T21:00:17.414Z"
         updatedAt:
           type: string
           format: date-time
-          description: Data e hora da última atualização
-          example: "2025-08-18T21:00:17.414Z"
 
     CreateUserRequest:
       type: object
@@ -269,49 +844,410 @@ components:
       properties:
         name:
           type: string
-          minLength: 1
-          maxLength: 100
-          description: Nome completo do usuário
-          example: "Maria Santos"
         email:
           type: string
           format: email
-          description: Endereço de email único do usuário
-          example: "maria@example.com"
 
     UpdateUserRequest:
       type: object
       properties:
         name:
           type: string
-          minLength: 1
-          maxLength: 100
-          description: Nome completo do usuário
-          example: "Maria Santos Silva"
         email:
           type: string
           format: email
-          description: Endereço de email único do usuário
-          example: "maria.silva@example.com"
 
-    Error:
+    PaginatedResponseUsers:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseBase'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+
+    # ------------------------
+    # Clients
+    # ------------------------
+    Client:
       type: object
       required:
-        - error
+        - clientId
+        - name
+        - email
+        - createdAt
       properties:
-        error:
+        clientId:
           type: string
-          description: Mensagem de erro
-          example: "Invalid input data"
-        details:
+          example: "c1a5e7b8-1234-4a2b-9f2a-0b1c2d3e4f5a"
+        name:
           type: string
-          description: Detalhes adicionais sobre o erro
-          example: "The email field must be a valid email address"
+          example: "Empresa X"
+        email:
+          type: string
+          format: email
+          example: "contato@empresa.com"
+        phone:
+          type: string
+          example: "+55 51 99999-9999"
+        createdAt:
+          type: string
+          format: date-time
 
-tags:
-  - name: Users
-    description: Operações relacionadas aos usuários
+    CreateClientRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
 
-# Códigos de erro específicos do Prisma
-# P2002: Unique constraint violation (email duplicado)
-# P2025: Record not found (usuário não encontrado)
+    UpdateClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+
+    PaginatedResponseClients:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseBase'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Client'
+
+    # ------------------------
+    # Owners
+    # ------------------------
+    Owner:
+      type: object
+      required:
+        - ownerId
+        - name
+        - email
+        - phone
+        - createdAt
+      properties:
+        ownerId:
+          type: string
+          example: "o1a2b3c4-1234-5678-9abc-def012345678"
+        name:
+          type: string
+          example: "Ana Laura Lopes"
+        email:
+          type: string
+          format: email
+          example: "ana@example.com"
+        phone:
+          type: string
+          example: "+55 51 99999-9999"
+        address:
+          type: string
+          example: "Rua Exemplo, 123"
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateOwnerRequest:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+      properties:
+        name: { type: string }
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+
+    UpdateOwnerRequest:
+      type: object
+      properties:
+        name: { type: string }
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+
+    PaginatedResponseOwners:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseBase'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Owner'
+
+    # ------------------------
+    # Pets
+    # ------------------------
+    Pet:
+      type: object
+      required:
+        - petId
+        - ownerId
+        - name
+        - species
+        - createdAt
+      properties:
+        petId:
+          type: string
+          example: "p1a2b3c4-9876-5432-1abc-def012345678"
+        ownerId:
+          type: string
+          example: "o1a2b3c4-1234-5678-9abc-def012345678"
+        name:
+          type: string
+          example: "Rex"
+        species:
+          type: string
+          example: "cachorro"
+        breed:
+          type: string
+          example: "Labrador"
+        birthDate:
+          type: string
+          format: date
+          example: "2018-05-20"
+        weight:
+          type: number
+          example: 12.5
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreatePetRequest:
+      type: object
+      required:
+        - ownerId
+        - name
+        - species
+      properties:
+        ownerId:
+          type: string
+        name:
+          type: string
+        species:
+          type: string
+        breed:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        weight:
+          type: number
+        notes:
+          type: string
+
+    UpdatePetRequest:
+      type: object
+      properties:
+        ownerId:
+          type: string
+        name:
+          type: string
+        species:
+          type: string
+        breed:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        weight:
+          type: number
+        notes:
+          type: string
+
+    PaginatedResponsePets:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseBase'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Pet'
+
+    # ------------------------
+    # Appointments & state machine
+    # ------------------------
+    AppointmentStatus:
+      type: string
+      description: Estado atual do appointment
+      enum:
+        - pendente
+        - confirmado
+        - cancelado
+        - concluido
+      example: "pendente"
+
+    AppointmentEvent:
+      type: string
+      description: Evento a ser enviado para a state machine
+      enum:
+        - confirmado
+        - cancelado
+        - completo
+      example: "confirmado"
+
+    Appointment:
+      type: object
+      required:
+        - appointmentId
+        - petId
+        - ownerId
+        - date
+        - time
+        - type
+        - status
+        - createdAt
+      properties:
+        appointmentId:
+          type: string
+          example: "a1b2c3d4-1234-5678-9abc-defghijklmn1"
+        petId:
+          type: string
+          example: "p1a2b3c4-9876-5432-1abc-def012345678"
+        ownerId:
+          type: string
+          example: "o1a2b3c4-1234-5678-9abc-def012345678"
+        date:
+          type: string
+          format: date
+          example: "2025-12-10"
+        time:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):([0-5]\\d)$"
+          example: "14:30"
+        type:
+          type: string
+          example: "consulta"
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+        veterinarian:
+          type: string
+          example: "Dr. Fulano"
+        notes:
+          type: string
+          example: "Trazer vacinas anteriores"
+        createdAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        canceledAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateAppointmentRequest:
+      type: object
+      required:
+        - petId
+        - ownerId
+        - date
+        - time
+        - type
+      properties:
+        petId:
+          type: string
+        ownerId:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):([0-5]\\d)$"
+        type:
+          type: string
+          description: Tipo de atendimento (consulta, vacina, banho, tosa, etc)
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+          description: Estado inicial (recomendado 'pendente')
+        veterinarian:
+          type: string
+        notes:
+          type: string
+
+    UpdateAppointmentRequest:
+      type: object
+      properties:
+        petId:
+          type: string
+        ownerId:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):([0-5]\\d)$"
+        type:
+          type: string
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+        veterinarian:
+          type: string
+        notes:
+          type: string
+
+    AppointmentEventRequest:
+      type: object
+      required:
+        - event
+      properties:
+        event:
+          $ref: '#/components/schemas/AppointmentEvent'
+        reason:
+          type: string
+          description: Motivo do cancelamento (opcional)
+      example:
+        event: "cancelado"
+        reason: "Tutor não pôde comparecer"
+
+    PaginatedResponseAppointments:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseBase'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Appointment'
+
+-notes:
+  - "A máquina de estados utiliza os eventos: confirmado, cancelado, completo."
+  - "O endpoint POST /appointments/{appointmentId}/events deve validar transições usando a lógica do backend (applyTransition/canTransition)."
+  - "Endpoints estão protegidos com bearerAuth por padrão; ajuste security se necessário."
+  - "Campos createdAt/confirmedAt/canceledAt/completedAt são strings ISO date-time."
