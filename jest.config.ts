@@ -21,7 +21,11 @@ const config: Config = {
 
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^src/(.*)$': '<rootDir>/src/$1',
   },
+
+  moduleDirectories: ['node_modules', '<rootDir>/src'],
 
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   setupFiles: ['dotenv/config'],
